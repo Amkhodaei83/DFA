@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="720" prefWidth="1280" xmlns="http://javafx.com/javafx/17.0.12" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.dfa.Main_DFA">
+   <center>
+      <Pane fx:id="pane" prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER" />
+   </center>
+   <left>
+      <Pane prefHeight="400.0" prefWidth="185.0" BorderPane.alignment="CENTER" />
+   </left>
+   <right>
+      <Pane prefHeight="200.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+         <children>
+            <Label fx:id="la1" layoutX="30.0" layoutY="14.0" prefHeight="227.0" prefWidth="141.0" text="Label" />
+            <Label fx:id="la2" layoutX="28.0" layoutY="252.0" prefHeight="104.0" prefWidth="142.0" text="Label" />
+            <Button layoutX="77.0" layoutY="361.0" mnemonicParsing="false" prefHeight="25.0" prefWidth="81.0" text="Button" />
+         </children>
+      </Pane>
+   </right>
+</BorderPane>
