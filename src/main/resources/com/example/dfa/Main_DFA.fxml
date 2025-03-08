@@ -30,11 +30,19 @@
 
    <!-- Top Toolbar -->
    <top>
-      <ToolBar fx:id="titleBar" styleClass="title-bar">
+      <ToolBar styleClass="title-bar">
          <!-- Left Section: Open and Save -->
          <HBox spacing="5" styleClass="toolbar-section-left">
-            <Button fx:id="openButton" text="Open" styleClass="toolbar-button" />
-            <Button fx:id="saveButton" text="Save" styleClass="toolbar-button" />
+            <Button fx:id="openButton" text="Open" styleClass="toolbar-button">
+               <tooltip>
+                  <Tooltip text="Open a file" />
+               </tooltip>
+            </Button>
+            <Button fx:id="saveButton" text="Save" styleClass="toolbar-button">
+               <tooltip>
+                  <Tooltip text="Save your work" />
+               </tooltip>
+            </Button>
          </HBox>
 
          <!-- Spacer -->
@@ -42,9 +50,21 @@
 
          <!-- Center Section: New Page, New State, New Transition -->
          <HBox spacing="5" styleClass="toolbar-section-center">
-            <Button fx:id="newPageButton" text="New Page" styleClass="toolbar-button" />
-            <Button fx:id="newStateButton" text="New State" styleClass="toolbar-button" />
-            <Button fx:id="newTransitionButton" text="New Transition" styleClass="toolbar-button" />
+            <Button fx:id="newPageButton" text="New Page" styleClass="toolbar-button">
+               <tooltip>
+                  <Tooltip text="Create a new page" />
+               </tooltip>
+            </Button>
+            <Button fx:id="newStateButton" text="New State" styleClass="toolbar-button">
+               <tooltip>
+                  <Tooltip text="Choose or type the name for the state." />
+               </tooltip>
+            </Button>
+            <Button fx:id="newTransitionButton" text="New Transition" styleClass="toolbar-button">
+               <tooltip>
+                  <Tooltip text="Create a new transition between states" />
+               </tooltip>
+            </Button>
          </HBox>
 
          <!-- Spacer -->
@@ -52,21 +72,30 @@
 
          <!-- Right Section: Undo and Redo -->
          <HBox spacing="5" styleClass="toolbar-section-right">
-            <Button fx:id="undoButton" text="Undo" styleClass="toolbar-button" />
-            <Button fx:id="redoButton" text="Redo" styleClass="toolbar-button" />
+            <Button fx:id="undoButton" text="Undo" styleClass="toolbar-button">
+               <tooltip>
+                  <Tooltip text="Undo the last action" />
+               </tooltip>
+            </Button>
+            <Button fx:id="redoButton" text="Redo" styleClass="toolbar-button">
+               <tooltip>
+                  <Tooltip text="Redo the last undone action" />
+               </tooltip>
+            </Button>
          </HBox>
       </ToolBar>
+
    </top>
 
    <!-- Main Content Area -->
    <center>
-      <SplitPane fx:id="mainSplitPane" dividerPositions="0.2,0.8" orientation="HORIZONTAL"
+      <SplitPane dividerPositions="0.2,0.8" orientation="HORIZONTAL"
                  prefHeight="880.0" prefWidth="2260.0" styleClass="main-split-pane">
          <items>
             <!-- Left Panel: Settings and DFA Transition Table -->
-            <VBox fx:id="leftVBox" minWidth="271" prefWidth="290" spacing="10" styleClass="left-panel">
+            <VBox minWidth="271" prefWidth="290" spacing="10" styleClass="left-panel">
                <!-- Settings TabPane -->
-               <TabPane fx:id="settingsTabPane" styleClass="settings-tabpane" tabClosingPolicy="UNAVAILABLE">
+               <TabPane fx:id="TabPane" styleClass="settings-tabpane" tabClosingPolicy="UNAVAILABLE">
                   <tabs>
                      <!-- State Settings Tab -->
                      <Tab fx:id="stateSettingsTab" text="State Settings">
@@ -165,7 +194,7 @@
             <BorderPane fx:id="centerPane" styleClass="center-pane">
                <center>
                   <AnchorPane fx:id="centerAnchor">
-                     <Canvas fx:id="drawingCanvas" AnchorPane.bottomAnchor="0.0"
+                     <Canvas fx:id="centerCanvas" AnchorPane.bottomAnchor="0.0"
                              AnchorPane.leftAnchor="0.0"
                              AnchorPane.rightAnchor="0.0"
                              AnchorPane.topAnchor="0.0" />
@@ -174,15 +203,15 @@
             </BorderPane>
 
             <!-- Right Panel: Log and Process Controls -->
-            <AnchorPane fx:id="rightAnchor">
-               <BorderPane fx:id="rightVBox" styleClass="right-panel"
+            <AnchorPane >
+               <BorderPane  styleClass="right-panel"
                            minWidth="160"
                            AnchorPane.bottomAnchor="0.0"
                            AnchorPane.leftAnchor="0.0"
                            AnchorPane.rightAnchor="0.0"
                            AnchorPane.topAnchor="0.0">
                   <center>
-                     <ScrollPane fx:id="logScrollPane" fitToHeight="true" fitToWidth="true"
+                     <ScrollPane  fitToHeight="true" fitToWidth="true"
                                  styleClass="log-scrollpane"
                                  AnchorPane.bottomAnchor="50.0"
                                  AnchorPane.leftAnchor="0.0"
