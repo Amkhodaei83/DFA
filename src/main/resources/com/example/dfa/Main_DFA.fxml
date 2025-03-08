@@ -1,148 +1,217 @@
-<?xml version="1.0" encoding="UTF-8"?>
 
-<?import javafx.scene.canvas.Canvas?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.CheckBox?>
-<?import javafx.scene.control.ComboBox?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.scene.control.SplitPane?>
-<?import javafx.scene.control.Tab?>
-<?import javafx.scene.control.TabPane?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.TableView?>
-<?import javafx.scene.control.TextArea?>
-<?import javafx.scene.control.Tooltip?>
-<?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.control.SplitPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.canvas.Canvas?>
+<?import javafx.scene.control.TextArea?>
+<?import java.net.URL?>
+<?import javafx.scene.control.TextField?>
+<BorderPane xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1">
+   <!-- Reference to external CSS file -->
+   <stylesheets>
+      <URL value="@styles.css" />
+   </stylesheets>
 
-<!--
-  Final FXML with refined layout and final touches.
-  This file uses custom CSS from "styles.css" to apply gradients, curves, and transitions.
--->
+   <!-- Top Toolbar -->
+   <top>
+      <ToolBar fx:id="titleBar" styleClass="title-bar">
+         <!-- Left Section: Open and Save -->
+         <HBox spacing="5" styleClass="toolbar-section-left">
+            <Button fx:id="openButton" text="Open" styleClass="toolbar-button" />
+            <Button fx:id="saveButton" text="Save" styleClass="toolbar-button" />
+         </HBox>
 
-<SplitPane fx:id="mainSplitPane" dividerPositions="0.2, 0.8" orientation="HORIZONTAL" prefHeight="880.0" prefWidth="2260.0" styleClass="main-split-pane" stylesheets="@styles.css" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.dfa.Main_DFA">
-   <items>
+         <!-- Spacer -->
+         <Region HBox.hgrow="ALWAYS" />
 
-      <!-- LEFT PANEL: Settings TabPane and DFA Transition Table -->
-      <VBox fx:id="leftVBox" minWidth="271" prefWidth="290" spacing="10" styleClass="left-panel">
-         <!-- Settings TabPane -->
-         <TabPane fx:id="settingsTabPane" styleClass="settings-tabpane" tabClosingPolicy="UNAVAILABLE">
-            <tabs>
-               <!-- Tab 1: State Settings -->
-               <Tab fx:id="stateSettingsTab" text="State Settings">
+         <!-- Center Section: New Page, New State, New Transition -->
+         <HBox spacing="5" styleClass="toolbar-section-center">
+            <Button fx:id="newPageButton" text="New Page" styleClass="toolbar-button" />
+            <Button fx:id="newStateButton" text="New State" styleClass="toolbar-button" />
+            <Button fx:id="newTransitionButton" text="New Transition" styleClass="toolbar-button" />
+         </HBox>
+
+         <!-- Spacer -->
+         <Region HBox.hgrow="ALWAYS" />
+
+         <!-- Right Section: Undo and Redo -->
+         <HBox spacing="5" styleClass="toolbar-section-right">
+            <Button fx:id="undoButton" text="Undo" styleClass="toolbar-button" />
+            <Button fx:id="redoButton" text="Redo" styleClass="toolbar-button" />
+         </HBox>
+      </ToolBar>
+   </top>
+
+   <!-- Main Content Area -->
+   <center>
+      <SplitPane fx:id="mainSplitPane" dividerPositions="0.2,0.8" orientation="HORIZONTAL"
+                 prefHeight="880.0" prefWidth="2260.0" styleClass="main-split-pane">
+         <items>
+            <!-- Left Panel: Settings and DFA Transition Table -->
+            <VBox fx:id="leftVBox" minWidth="271" prefWidth="290" spacing="10" styleClass="left-panel">
+               <!-- Settings TabPane -->
+               <TabPane fx:id="settingsTabPane" styleClass="settings-tabpane" tabClosingPolicy="UNAVAILABLE">
+                  <tabs>
+                     <!-- State Settings Tab -->
+                     <Tab fx:id="stateSettingsTab" text="State Settings">
+                        <content>
+                           <VBox alignment="TOP_LEFT" spacing="10" styleClass="tab-content">
+                              <HBox spacing="10" styleClass="settings-row">
+                                 <Label styleClass="label" text="State:" />
+                                 <!-- Replaced ComboBox with TextField -->
+                                 <TextField fx:id="stateNameTextField"
+                                            prefWidth="150"
+                                            promptText="Select or enter name"
+                                            styleClass="combo-box"
+                                            translateX="33.0">
+                                    <tooltip>
+                                       <Tooltip text="Choose or type the name for the state." />
+                                    </tooltip>
+                                 </TextField>
+                              </HBox>
+                              <HBox spacing="10" styleClass="settings-row">
+                                 <CheckBox fx:id="startStateCheck" styleClass="check-box" text="Start State">
+                                    <tooltip>
+                                       <Tooltip text="Mark this as the initial state." />
+                                    </tooltip>
+                                 </CheckBox>
+                                 <CheckBox fx:id="acceptingStateCheck" styleClass="check-box" text="Accepting State">
+                                    <tooltip>
+                                       <Tooltip text="Indicate that this state is accepting." />
+                                    </tooltip>
+                                 </CheckBox>
+                              </HBox>
+                           </VBox>
+                        </content>
+                     </Tab>
+                     <!-- Transition Settings Tab -->
+                     <Tab fx:id="transitionSettingsTab" text="Transition Settings">
+                        <content>
+                           <VBox alignment="TOP_LEFT" spacing="10" styleClass="tab-content">
+                              <HBox spacing="10" styleClass="settings-row">
+                                 <Label styleClass="label" text="From State:" />
+                                 <ComboBox fx:id="fromStateCombo" editable="true"
+                                           prefWidth="150" promptText="Select or enter state"
+                                           styleClass="combo-box">
+                                    <tooltip>
+                                       <Tooltip text="Select the source state for the transition." />
+                                    </tooltip>
+                                 </ComboBox>
+                              </HBox>
+                              <HBox spacing="10" styleClass="settings-row">
+                                 <Label styleClass="label" text="To State:" />
+                                 <ComboBox fx:id="toStateCombo" editable="true"
+                                           prefWidth="150" promptText="Select or enter state"
+                                           styleClass="combo-box" translateX="15.5">
+                                    <tooltip>
+                                       <Tooltip text="Select the destination state for the transition." />
+                                    </tooltip>
+                                 </ComboBox>
+                              </HBox>
+                              <HBox spacing="10" styleClass="settings-row">
+                                 <Label styleClass="label" text="Transition:" />
+                                 <ComboBox fx:id="transitionNameCombo" editable="true"
+                                           prefWidth="150" promptText="Select or enter transition"
+                                           styleClass="combo-box" translateX="5.0">
+                                    <tooltip>
+                                       <Tooltip text="Specify the transition label or symbol." />
+                                    </tooltip>
+                                 </ComboBox>
+                              </HBox>
+                           </VBox>
+                        </content>
+                     </Tab>
+                  </tabs>
+               </TabPane>
+               <!-- DFA Transition Table within a ScrollPane -->
+               <ScrollPane fitToHeight="true" fitToWidth="true"
+                           styleClass="table-scrollpane" VBox.vgrow="ALWAYS">
                   <content>
-                     <VBox alignment="TOP_LEFT" spacing="10" styleClass="tab-content">
-                        <HBox spacing="10" styleClass="settings-row">
-                           <Label styleClass="label" text="State:" />
-                           <ComboBox fx:id="stateNameCombo" editable="true" prefWidth="150" promptText="Select or enter name" styleClass="combo-box" translateX="33.0">
-                              <tooltip>
-                                 <Tooltip text="Choose or type the name for the state." />
-                              </tooltip>
-                           </ComboBox>
-                        </HBox>
-                        <HBox spacing="10" styleClass="settings-row">
-                           <CheckBox fx:id="startStateCheck" styleClass="check-box" text="Start State">
-                              <tooltip>
-                                 <Tooltip text="Mark this as the initial state." />
-                              </tooltip>
-                           </CheckBox>
-                           <CheckBox fx:id="acceptingStateCheck" styleClass="check-box" text="Accepting State">
-                              <tooltip>
-                                 <Tooltip text="Indicate that this state is accepting." />
-                              </tooltip>
-                           </CheckBox>
-                        </HBox>
-                     </VBox>
-                  </content>
-               </Tab>
-               <!-- Tab 2: Transition Settings -->
-               <Tab fx:id="transitionSettingsTab" text="Transition Settings">
-                  <content>
-                     <VBox alignment="TOP_LEFT" spacing="10" styleClass="tab-content">
-                        <HBox spacing="10" styleClass="settings-row">
-                           <Label styleClass="label" text="From State:" />
-                           <ComboBox fx:id="fromStateCombo" editable="true" prefWidth="150" promptText="Select or enter state" styleClass="combo-box">
-                              <tooltip>
-                                 <Tooltip text="Select the source state for the transition." />
-                              </tooltip>
-                           </ComboBox>
-                        </HBox>
-                        <HBox spacing="10" styleClass="settings-row">
-                           <Label styleClass="label" text="To State:" />
-                           <ComboBox fx:id="toStateCombo" editable="true" prefWidth="150" promptText="Select or enter state" styleClass="combo-box" translateX="15.5">
-                              <tooltip>
-                                 <Tooltip text="Select the destination state for the transition." />
-                              </tooltip>
-                           </ComboBox>
-                        </HBox>
-                        <HBox spacing="10" styleClass="settings-row">
-                           <Label styleClass="label" text="Transition:" />
-                           <ComboBox fx:id="transitionNameCombo" editable="true" prefWidth="150" promptText="Select or enter transition" styleClass="combo-box" translateX="5.0">
-                              <tooltip>
-                                 <Tooltip text="Specify the transition label or symbol." />
-                              </tooltip>
-                           </ComboBox>
-                        </HBox>
-                     </VBox>
-                  </content>
-               </Tab>
-            </tabs>
-         </TabPane>
-
-         <!-- DFA Transition Table wrapped in a ScrollPane -->
-         <ScrollPane fitToHeight="true" fitToWidth="true" styleClass="table-scrollpane" VBox.vgrow="ALWAYS">
-            <content>
-               <TableView fx:id="dfaTransitionTable" styleClass="dfa-table">
-                  <columns>
-                     <TableColumn fx:id="stateColumn" prefWidth="68.66668438911438" styleClass="state-column" text="States" />
-                     <TableColumn fx:id="transitionsParentColumn" minWidth="-Infinity" prefWidth="293.99999237060547" styleClass="transitions-parent-column" text="Transitions">
+                     <TableView fx:id="dfaTransitionTable" styleClass="dfa-table">
                         <columns>
-                           <TableColumn fx:id="transitionColumn1" prefWidth="70.66669464111328" styleClass="transition-column" />
+                           <TableColumn fx:id="stateColumn" prefWidth="68.66668438911438"
+                                        styleClass="state-column" text="States" />
+                           <TableColumn fx:id="transitionsParentColumn" minWidth="-Infinity"
+                                        prefWidth="293.99999237060547"
+                                        styleClass="transitions-parent-column" text="Transitions">
+                              <columns>
+                                 <TableColumn fx:id="transitionColumn1" prefWidth="70.66669464111328"
+                                              styleClass="transition-column" />
+                              </columns>
+                           </TableColumn>
                         </columns>
-                     </TableColumn>
-                  </columns>
-               </TableView>
-            </content>
-         </ScrollPane>
-      </VBox>
-
-      <!-- CENTER PANEL: Drawing Area -->
-      <BorderPane fx:id="centerPane" styleClass="center-pane">
-         <center>
-            <AnchorPane fx:id="centerAnchor">
-               <Canvas fx:id="drawingCanvas" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" />
-            </AnchorPane>
-         </center>
-      </BorderPane>
-
-      <!-- RIGHT PANEL: Log and Process Controls -->
-      <AnchorPane fx:id="rightAnchor">
-         <BorderPane fx:id="rightVBox" styleClass="right-panel" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-            <center>
-               <ScrollPane fx:id="logScrollPane" fitToHeight="true" fitToWidth="true" styleClass="log-scrollpane" AnchorPane.bottomAnchor="50.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
-                  <content>
-                     <TextArea fx:id="logTextArea" editable="false" styleClass="log-textarea" wrapText="true">
-                        <tooltip>
-                           <Tooltip text="View process logs and system feedback here." />
-                        </tooltip>
-                     </TextArea>
+                     </TableView>
                   </content>
                </ScrollPane>
-            </center>
-            <bottom>
-               <HBox alignment="CENTER" styleClass="bottom-hbox" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0">
-                  <Button fx:id="startProcessButton" mnemonicParsing="true" styleClass="process-button" text="Start Process">
-                     <tooltip>
-                        <Tooltip text="Click to initiate the DFA process" />
-                     </tooltip>
-                  </Button>
-               </HBox>
-            </bottom>
-         </BorderPane>
-      </AnchorPane>
+            </VBox>
 
-   </items>
-</SplitPane>
+            <!-- Center Panel: Drawing Area -->
+            <BorderPane fx:id="centerPane" styleClass="center-pane">
+               <center>
+                  <AnchorPane fx:id="centerAnchor">
+                     <Canvas fx:id="drawingCanvas" AnchorPane.bottomAnchor="0.0"
+                             AnchorPane.leftAnchor="0.0"
+                             AnchorPane.rightAnchor="0.0"
+                             AnchorPane.topAnchor="0.0" />
+                  </AnchorPane>
+               </center>
+            </BorderPane>
+
+            <!-- Right Panel: Log and Process Controls -->
+            <AnchorPane fx:id="rightAnchor">
+               <BorderPane fx:id="rightVBox" styleClass="right-panel"
+                           minWidth="160"
+                           AnchorPane.bottomAnchor="0.0"
+                           AnchorPane.leftAnchor="0.0"
+                           AnchorPane.rightAnchor="0.0"
+                           AnchorPane.topAnchor="0.0">
+                  <center>
+                     <ScrollPane fx:id="logScrollPane" fitToHeight="true" fitToWidth="true"
+                                 styleClass="log-scrollpane"
+                                 AnchorPane.bottomAnchor="50.0"
+                                 AnchorPane.leftAnchor="0.0"
+                                 AnchorPane.rightAnchor="0.0"
+                                 AnchorPane.topAnchor="0.0">
+                        <content>
+                           <TextArea fx:id="logTextArea" editable="false"
+                                     wrapText="true" styleClass="log-textarea">
+                              <tooltip>
+                                 <Tooltip text="View process logs and system feedback here." />
+                              </tooltip>
+                           </TextArea>
+                        </content>
+                     </ScrollPane>
+                  </center>
+                  <bottom>
+                     <HBox alignment="CENTER" styleClass="bottom-hbox"
+                           AnchorPane.bottomAnchor="0.0"
+                           AnchorPane.leftAnchor="0.0"
+                           AnchorPane.rightAnchor="0.0">
+                        <Button fx:id="startProcessButton" mnemonicParsing="true"
+                                text="Start Process" styleClass="process-button">
+                           <tooltip>
+                              <Tooltip text="Click to initiate the DFA process" />
+                           </tooltip>
+                        </Button>
+                     </HBox>
+                  </bottom>
+               </BorderPane>
+            </AnchorPane>
+         </items>
+      </SplitPane>
+   </center>
+</BorderPane>

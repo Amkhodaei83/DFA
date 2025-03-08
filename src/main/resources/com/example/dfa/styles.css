@@ -22,6 +22,41 @@
     -fx-transition: all 0.2s ease-in-out;
 }
 
+/* ======= Toolbar Button (New Dark Theme) ======= */
+.toolbar-button {
+    -fx-background-color: #303030;
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-text-fill: white; /* Changed for better contrast */
+    -fx-padding: 2 6;
+    -fx-font-size: 8px;
+    -fx-cursor: hand;
+    -fx-border-color: transparent;
+}
+
+.toolbar-button:hover {
+    -fx-background-color: #303030;
+}
+
+.toolbar-button:pressed {
+    -fx-background-color: #303030;
+}
+
+
+/* Ensure the button groups in the toolbar are centered */
+.toolbar-section-left,
+.toolbar-section-center,
+.toolbar-section-right {
+    -fx-alignment: center;
+}
+
+/* Ensure the button groups in the toolbar are centered */
+.toolbar-section-left,
+.toolbar-section-center,
+.toolbar-section-right {
+    -fx-alignment: center;
+}
+
 /* ======= Design Tokens ======= */
 /* Primary colors (used in gradients below):
    • #FFFFFF: Primary Background
@@ -80,7 +115,6 @@
     -fx-background-radius: 8;
 }
 
-
 /* ======= Text, Rows & Tooltips ======= */
 .settings-row {
     -fx-spacing: 10;
@@ -101,7 +135,6 @@
     -fx-border-radius: 4;
     -fx-background-radius: 4;
 }
-
 
 /* ======= ComboBox & CheckBox ======= */
 .combo-box {
@@ -162,56 +195,54 @@
 
 /* ======= Bottom Process Controls ======= */
 .bottom-hbox {
-    -fx-alignment: CENTER;
+    -fx-alignment: center;
     -fx-padding: 10;
-    -fx-background-color: #F0F0F0;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
+    -fx-background-color: #ecf0f1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
 }
 
 /* ======= Interactive Elements (Gradient Backgrounds) ======= */
 /* Generic Button with a smooth vertical gradient */
 .button {
-    /* Gradient from top (#007acc) to bottom (#005a9e) */
-    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, #007acc, #005a9e);
+    -fx-background-color: linear-gradient(
+      to bottom,
+      rgba(112, 112, 112, 1),
+      rgba(112, 112, 112, 0.7)
+    );
+
     -fx-text-fill: #FFFFFF;
     -fx-font-weight: bold;
     -fx-padding: 8 15 8 15;
     -fx-background-radius: 8;
-    -fx-transition: all 0.2s ease-in-out;
 }
 
 .button:hover {
-    /* Darker gradient on hover */
-    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, #005a9e, #003e74);
+    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, #707070, #4b4b4b);
 }
 
 .button:pressed {
-    /* Pressed state: a flatter, consistent tone */
-    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, #003e74, #003e74);
+    -fx-background-color: #003e74;
 }
 
 /* Process Button (Success variant) with gradients */
 .process-button {
-    /* Gradient from top (#4CAF50) to bottom (#388E3C) */
-    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, #4CAF50, #388E3C);
-    -fx-text-fill: #FFFFFF;
+    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, #1e88e5, #1565c0);
+    -fx-text-fill: white;
     -fx-font-size: 14px;
-    -fx-padding: 8 15 8 15;
-    -fx-background-radius: 8;
+    -fx-padding: 8 15;
+    -fx-background-radius: 4;
     -fx-cursor: hand;
-    -fx-transition: all 0.2s ease-in-out;
 }
 
 .process-button:hover {
-    /* Darker gradient on hover */
-    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, #388E3C, #2E7D32);
+    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, #1565c0, #0d47a1);
 }
 
 .process-button:pressed {
-    /* Pressed state with a uniform tone */
-    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, #2E7D32, #2E7D32);
+    -fx-background-color: linear-gradient(from 0% 0% to 0% 100%, #0d47a1, #0d47a1);
 }
+
 
 /* TextArea focus effect remains solid for clear visual feedback */
 .text-area:focused {
