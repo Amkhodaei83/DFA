@@ -22,7 +22,7 @@
 
 
 
-<BorderPane xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.dfa.Application_Controler">
+<BorderPane xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.dfa_app.Application_Controler">
    <!-- Reference to external CSS file -->
    <stylesheets>
       <URL value="@styles.css" />

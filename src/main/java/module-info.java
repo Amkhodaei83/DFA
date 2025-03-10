@@ -1,4 +1,4 @@
-module com.example.dfa {
+module com.example.dfa_app {
     requires javafx.controls;
     requires javafx.fxml;
 
@@ -7,6 +7,8 @@ module com.example.dfa {
     requires org.kordamp.bootstrapfx.core;
     requires java.logging;
 
-    opens com.example.dfa to javafx.fxml;
-    exports com.example.dfa;
+    opens com.example.dfa_app to javafx.fxml;
+    exports com.example.dfa_app;
+    exports com.example.dfa_app.DFA;
+    opens com.example.dfa_app.DFA to javafx.fxml;
 }

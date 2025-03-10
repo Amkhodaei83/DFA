@@ -1,4 +1,4 @@
-package com.example.dfa;
+package com.example.dfa_app;
 
 import javafx.application.Application;
 import javafx.application.Platform;

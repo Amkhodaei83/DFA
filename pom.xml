@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.example</groupId>
-    <artifactId>DFA</artifactId>
+    <artifactId>DFA_app</artifactId>
     <version>1.0-SNAPSHOT</version>
     <name>DFA</name>
 
@@ -80,7 +80,7 @@
                         <!-- Default configuration for running with: mvn clean javafx:run -->
                         <id>default-cli</id>
                         <configuration>
-                            <mainClass>com.example.dfa/com.example.dfa.HelloApplication</mainClass>
+                            <mainClass>com.example.dfa_app/com.example.dfa_app.HelloApplication</mainClass>
                             <launcher>app</launcher>
                             <jlinkZipName>app</jlinkZipName>
                             <jlinkImageName>app</jlinkImageName>

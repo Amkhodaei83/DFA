@@ -1,4 +1,4 @@
-package com.example.dfa;
+package com.example.dfa_app;
 
 import javafx.fxml.FXML;
 import javafx.scene.layout.Pane;
