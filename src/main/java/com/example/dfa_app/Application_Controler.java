@@ -1,168 +1,196 @@
 package com.example.dfa_app;
 
 import com.example.dfa_app.DFA.*;
+
 import javafx.fxml.FXML;
+import javafx.scene.Camera;
 import javafx.scene.Node;
+import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
-import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
+import javafx.event.ActionEvent;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 
-public class ApplicationController {
 
-    // FXML nodes—names now match the fx:id values in the FXML file.
-    @FXML
-    private BorderPane centerPane;
+public class Application_Controler {
+
+
+//        dfaminimizeroop
+//        dfa.inputDFA();
+//        dfa.removeUnreachableStates();
+//        dfa.minimizeDFA();
+//        dfa.printMinimizedDFA();
+//
 
     @FXML
-    private TextField stateNameTextField;
+    private BorderPane BorderPane;
     @FXML
-    private CheckBox startStateCheck, acceptingStateCheck;
+    private TextField stateNameTextField ;
     @FXML
-    private ComboBox fromStateCombo, toStateCombo, transitionNameCombo;
+    private CheckBox startStateCheck , acceptingStateCheck ;
     @FXML
-    private TableView dfaTransitionTable;
+    private ComboBox fromStateCombo , toStateCombo , transitionNameCombo ;
     @FXML
-    private TableColumn stateColumn;
+    private TableView dfaTransitionTable ;
     @FXML
-    private TableColumn transitionsParentColumn;
+    private TableColumn stateColumn ;
     @FXML
-    private AnchorPane centerAnchor; // This is under the canvas.
+    private TableColumn transitionsParentColumn ; //transitionColumn1
     @FXML
-    private StackPane mainStackPane;
+    private AnchorPane centerAnchor ;  // under canvas
     @FXML
-    private Pane centerCanvas1;
+    private StackPane StackPane ;
     @FXML
-    private Pane centerCanvas2;
+    private Pane centerCanvas1 ;
     @FXML
-    private Button startProcessButton;
+    private Pane centerCanvas2 ;
     @FXML
-    private TextArea logTextArea;
+    private Button startProcessButton ;
     @FXML
-    private Button openButton;
+    private TextArea logTextArea ;
     @FXML
-    private Button saveButton;
+    private Button openButton ;
     @FXML
-    private Button newPageButton;
+    private Button saveButton ;
     @FXML
-    private Button newStateButton;
+    private Button newPageButton ;
     @FXML
-    private Button newTransitionButton;
+    private Button newStateButton ;
     @FXML
-    private Button undoButton;
+    private Button newTransitionButton ;
     @FXML
-    private Button redoButton;
+    private Button undoButton ;
+    @FXML
+    private Button redoButton ;
+
 
     @FXML
     public void initialize() {
-        // Ensure centerCanvas2 does not intercept mouse events.
-        centerCanvas2.setMouseTransparent(true);
+//    var DFA = new DFA();
 
-        // Make the centerPane focusable and request focus so it can capture key events.
-        centerPane.setFocusTraversable(true);
-        centerPane.requestFocus();
 
-        // ----------------------------------------------------------------
-        // Transition Creation on centerAnchor:
+//                transition.getCurvedArrow().select();
+
+
         centerAnchor.setOnMouseClicked(mouseClickEvent -> {
-            Node nodeUnderMouse;
-            if (mouseClickEvent.isControlDown() &&
-                    ((nodeUnderMouse = mouseClickEvent.getPickResult().getIntersectedNode()) != null) &&
-                    (nodeUnderMouse instanceof Circle)) {
-
-                System.out.println("A Circle was clicked (first state).");
-                Transition transition = new Transition((State) nodeUnderMouse.getUserData(), centerCanvas1);
-
-                // Temporary click listener for the second state.
+            Node nodeUnderMouse ;
+            if (mouseClickEvent.isControlDown()&&(( nodeUnderMouse = mouseClickEvent.getPickResult().getIntersectedNode()) != null)&&(nodeUnderMouse instanceof Circle)){
+                System.out.println("A Circle was clicked.");
+                Transition transition = new Transition( (State) nodeUnderMouse.getUserData() , centerCanvas1 );
+transition.getCurvedArrow().setPane(centerCanvas2);
                 centerAnchor.setOnMouseClicked(mouseClickEvent2 -> {
-                    Node nodeUnderMouse2;
-                    if (((nodeUnderMouse2 = mouseClickEvent2.getPickResult().getIntersectedNode()) != null) &&
-                            (nodeUnderMouse2 instanceof Circle)) {
-                        System.out.println("A Circle was clicked (second state).");
+                    Node nodeUnderMouse2 ;
+                    if ((( nodeUnderMouse2 = mouseClickEvent2.getPickResult().getIntersectedNode()) != null)&&(nodeUnderMouse2 instanceof Circle)){
+                        System.out.println("A Circle was clicked.");
+
                         transition.setNextState((State) nodeUnderMouse2.getUserData());
+                        transition.getCurvedArrow().addEventHandlers();
                     }
-                    // Clear the temporary handler.
                     centerAnchor.setOnMouseClicked(null);
                     mouseClickEvent2.consume();
                 });
             }
             mouseClickEvent.consume();
         });
-        // ----------------------------------------------------------------
 
-        // ----------------------------------------------------------------
-        // Key event handling on the centerPane:
-        centerPane.setOnKeyPressed(event -> {
-            if (event.isControlDown()) {
-                switch (event.getCode()) {
-                    case D:
-                        System.out.println("ctrl+d -> Delete");
-                        event.consume();
-                        break;
-                    case Z:
-                        System.out.println("ctrl+z -> Undo");
-                        event.consume();
-                        break;
-                    case Y:
-                        System.out.println("ctrl+y -> Redo");
-                        event.consume();
-                        break;
-                    case S:
-                        System.out.println("ctrl+s -> Save file");
-                        event.consume();
-                        break;
-                    case O:
-                        System.out.println("ctrl+o -> Open file");
-                        event.consume();
-                        break;
-                    case R:
-                        System.out.println("ctrl+R -> Start minimizing");
-                        event.consume();
-                        break;
-                    case K:
-                        System.out.println("ctrl+k -> Clear");
-                        event.consume();
-                        break;
-                    case N:
-                        System.out.println("ctrl+n -> New state command");
-                        // Create a new state on centerCanvas2.
-                        State state = new State(-30, -30, 30, Color.WHITE, centerCanvas2);
-                        state.select(); // Highlight and show label editor immediately.
 
-                        // Temporary listener for state movement.
-                        mainStackPane.setOnMouseMoved(mouseMoveEvent -> {
+
+
+
+
+
+
+
+        BorderPane.setOnKeyPressed(event -> {
+            switch (event.getCode()) {
+                case D:
+                    if (event.isControlDown()) {
+                        System.out.println("ctrl+d");//Delete
+                        event.consume();
+                    }
+                    break;
+                case Z:
+                    if (event.isControlDown()) {
+                        System.out.println("ctrl+z");//undo
+                        event.consume();
+                    }
+                    break;
+                case Y:
+                    if (event.isControlDown()) {
+                        System.out.println("ctrl+y");//redo
+                        event.consume();
+                    }
+                    break;
+                case S:
+                    if (event.isControlDown()) {
+                        System.out.println("ctrl+s");//save the file
+                        event.consume();
+                    }
+                    break;
+                case O:
+                    if (event.isControlDown()) {
+                        System.out.println("ctrl+o");//open a saved file
+                        event.consume();
+                    }
+                    break;
+                case R:
+                    if (event.isControlDown()) {
+                        System.out.println("ctrl+R");//start minimizing
+                        event.consume();
+                    }
+                    break;
+                case K:
+                    if (event.isControlDown()) {
+                        System.out.println("ctrl+k");//clear
+                        event.consume();
+                    }
+                    break;
+                case N:
+                    if (event.isControlDown()) {
+                        System.out.println("ctrl+n"); // New state command
+
+                        // Create a new state; note: centerCanvas2 should be a Pane.
+                        var state = new State(-30, -30, 30, Color.WHITE, centerCanvas2);
+                        state.select(); // Highlight the state & show label editor immediately
+
+                        // Add a temporary listener to allow the state to follow the mouse
+                        StackPane.setOnMouseMoved(mouseMoveEvent -> {
                             state.moveCircle(mouseMoveEvent.getX(), mouseMoveEvent.getY());
                             mouseMoveEvent.consume();
                         });
 
-                        // Listener for finalizing the state position.
-                        mainStackPane.setOnMouseClicked(mouseClickEvent -> {
-                            System.out.println("Mouse clicked -> new state finalized.");
-                            mainStackPane.setOnMouseMoved(null);
-                            mainStackPane.setOnMouseClicked(null);
+                        // Set up a listener to finalize state position on mouse click
+                        StackPane.setOnMouseClicked(mouseClickEvent -> {
+                            System.out.println("Mouse clicked -> new state.");
+                            // Remove the temporary mouse-move listener so the state stops following
+                            StackPane.setOnMouseMoved(null);
+                            // Remove this click listener (we'll add a finalizing click listener next)
+                            StackPane.setOnMouseClicked(null);
 
-                            // Optional: Final click handler for resetting state selection.
-                            mainStackPane.setOnMouseClicked(finalClickEvent -> {
-                                System.out.println("Mouse clicked -> state set.");
+                            // Set up a final click listener for setting the state name and deselecting
+                            StackPane.setOnMouseClicked(finalClickEvent -> {
+                                System.out.println("Mouse clicked -> set the state.");
                                 state.deselect();
-                                mainStackPane.setOnMouseClicked(null);
+                                // Now remove the finalizing click listener
+                                StackPane.setOnMouseClicked(null);
                                 finalClickEvent.consume();
                             });
                             mouseClickEvent.consume();
                         });
+
                         event.consume();
-                        break;
-                    default:
-                        break;
-                }
+                    }
+                    break;
+
+
             }
         });
-        // ----------------------------------------------------------------
     }
-
 }

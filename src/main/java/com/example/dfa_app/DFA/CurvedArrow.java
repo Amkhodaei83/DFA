@@ -20,12 +20,11 @@ public class CurvedArrow {
     private boolean controlDragging = false;
     private boolean selected = false;
 
-    public CurvedArrow(double startX, double startY, Pane pane) {
-        this.startX = startX;
-        this.startY = startY;
+    public CurvedArrow(State state, Pane pane) {
+        this.startX = state.getCircle().getCenterX();
+        this.startY = state.getCircle().getCenterY();
         this.pane = pane;
 
-        // Initialize the curve.
         curve = new QuadCurve();
         curve.setStartX(startX);
         curve.setStartY(startY);
@@ -45,7 +44,7 @@ public class CurvedArrow {
 
         // Initialize the editable label.
         editableLabel = new EditableLabel(pane);
-        editableLabel.setPosition(startX, startY);
+        editableLabel.setPosition(startX+5000, startY+10000);
 
         // Initialize the control point.
         controlPoint = new Circle(5, Color.RED);
@@ -53,10 +52,14 @@ public class CurvedArrow {
         controlPoint.setStrokeWidth(2);
         controlPoint.setVisible(false);
 
+        // *** Call addEventHandlers so the curve becomes editable ***
         addEventHandlers();
+
+        System.out.println("2");
     }
 
-    private void addEventHandlers() {
+
+    public void addEventHandlers() {
         // Allow dragging the control point to adjust the curve.
         controlPoint.setOnMousePressed(e -> {
             if (e.getButton() == MouseButton.PRIMARY) {
@@ -97,12 +100,12 @@ public class CurvedArrow {
      * Updates the end point of the arrow. Also positions the control point
      * at the midpoint between start and end so the curve is initially symmetrical.
      */
-    public void updateEndPoint(double x, double y) {
-        curve.setEndX(x);
-        curve.setEndY(y);
+    public void updateEndPoint(State state) {
+        curve.setEndX(state.getCircle().getCenterX());
+        curve.setEndY(state.getCircle().getCenterY());
 
-        double midX = (startX + x) / 2;
-        double midY = (startY + y) / 2;
+        double midX = (startX + state.getCircle().getCenterX()) / 2;
+        double midY = (startY + state.getCircle().getCenterY()) / 2;
         curve.setControlX(midX);
         curve.setControlY(midY);
         controlPoint.setCenterX(midX);
@@ -110,6 +113,7 @@ public class CurvedArrow {
 
         updateArrowHead();
         updateLabel();
+        System.out.printf("4");
     }
 
     /**
@@ -177,8 +181,15 @@ public class CurvedArrow {
         double y = Math.pow(1 - t, 2) * curve.getStartY()
                 + 2 * (1 - t) * t * curve.getControlY()
                 + Math.pow(t, 2) * curve.getEndY();
-        editableLabel.setCenteredPosition(x, y);
+
+        // Offset values: adjust these to move the label the desired distance.
+        // For example, move 20 pixels to the right and 20 pixels upward
+        double offsetX = 20;
+        double offsetY = -20;
+
+        editableLabel.setCenteredPosition(x + offsetX, y + offsetY);
     }
+
 
     /**
      * Called when the arrow is complete. Fixes the arrow head and label.
@@ -237,5 +248,8 @@ public class CurvedArrow {
         pane.getChildren().remove(controlPoint);
         editableLabel.getLabel().setVisible(false);
         editableLabel.getLabelEditor().setVisible(false);
+    }
+    public void setPane(Pane pane){
+        this.pane=pane;
     }
 }

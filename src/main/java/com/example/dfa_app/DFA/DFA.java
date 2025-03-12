@@ -1,12 +1,15 @@
 package com.example.dfa_app.DFA;
 
+import javafx.scene.layout.Pane;
+
 import java.util.*;
 
-class DFA {
+public class DFA {
     private Set<State> states;
     private Set<String> alphabet;
     private State initialState;
     private Set<State> acceptingStates;
+    private Pane pane;
 
     public DFA() {
         states = new HashSet<>();
@@ -15,6 +18,7 @@ class DFA {
     }
 
     public void inputDFA() {
+
         Scanner scanner = new Scanner(System.in);
 
         // Input States
@@ -25,7 +29,7 @@ class DFA {
         Map<String, State> stateMap = new HashMap<>();
 
         for (String name : stateNames) {
-            State state = new State(name);
+            State state = new State(); //new State(name)
             states.add(state);
             stateMap.put(name, state);
         }
@@ -58,7 +62,7 @@ class DFA {
                 System.out.println("δ(" + state.getName() + ", " + symbol + ") = ?");
                 String nextStateName = scanner.nextLine();
                 State nextState = stateMap.get(nextStateName);
-                state.addTransition(symbol, nextState);
+                state.addTransition(symbol, nextState,pane);
             }
         }
 
@@ -161,7 +165,7 @@ class DFA {
         int index = 0;
         for (Set<State> partition : partitions) {
             State representative = partition.iterator().next();
-            State newState = new State("P" + index);
+            State newState = new State();// new State("P" + index)
             if (partition.contains(initialState)) {
                 newInitialState = newState;
             }
@@ -189,7 +193,7 @@ class DFA {
                 State oldTargetState = oldRepresentative.getTransition(symbol);
                 if (oldTargetState != null) {
                     State newTargetState = stateMapping.get(oldTargetState);
-                    newState.addTransition(symbol, newTargetState);
+                    newState.addTransition(symbol, newTargetState,pane);
                 }
             }
         }

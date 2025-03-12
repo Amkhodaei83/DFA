@@ -20,8 +20,11 @@
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
+<?import javafx.scene.control.Pagination?>
+<?import javafx.scene.layout.Pane?>
 <BorderPane fx:id="BorderPane" xmlns="http://javafx.com/javafx/23.0.1" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.example.dfa_app.Application_Controler">
    <!-- Reference to external CSS file -->
    <stylesheets>
@@ -178,7 +181,10 @@
             <BorderPane fx:id="centerPane" styleClass="center-pane">
                <center>
                   <AnchorPane fx:id="centerAnchor">
-                     <Canvas fx:id="centerCanvas" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" />
+                     <StackPane fx:id="StackPane" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+                     <Pane fx:id="centerCanvas1" />
+                     <Pane fx:id="centerCanvas2" />
+                     </StackPane>
                   </AnchorPane>
                </center>
             </BorderPane>

@@ -6,6 +6,7 @@ module com.example.dfa_app {
     requires com.dlsc.formsfx;
     requires org.kordamp.bootstrapfx.core;
     requires java.logging;
+    requires java.desktop;
 
     opens com.example.dfa_app to javafx.fxml;
     exports com.example.dfa_app;
