@@ -1,95 +1,137 @@
 package com.example.dfa_app.DFA;
 
+import javafx.application.Platform;
 import javafx.beans.value.ChangeListener;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.Pane;
-import javafx.scene.text.Text;
+import javafx.scene.text.Font;
 
-public class EditableLabel {
-    private Text label;
-    private TextField labelEditor;
-    private Pane pane;
+/**
+ * EditableLabel is a UI control that displays a centered label along with an embedded
+ * TextField for editing its content. When editing begins the editor is shown;
+ * once finished, the TextField is hidden and the updated text appears centered.
+ */
+public class EditableLabel extends Pane {
 
-    // Listeners for keeping the label and editor in sync
-    private ChangeListener<String> labelEditorListener = (observable, oldValue, newValue) -> {
-        label.setText(newValue);
-    };
+    private static final String DEFAULT_FONT_FAMILY = "Arial";
+    private static final double DEFAULT_FONT_SIZE = 14;
 
-    public EditableLabel(Pane pane) {
-        this.pane = pane;
+    private final Label displayLabel = new Label("");
+    private final TextField editor = new TextField("");
 
-        // Create and configure the label
-        label = new Text("");
-        label.setMouseTransparent(true); // Prevent label from capturing mouse events
-        label.setVisible(false);
+    /**
+     * Constructs an EditableLabel with default styling.
+     * The label is visible initially and the editor is hidden.
+     */
+    public EditableLabel() {
+        // Configure the display label and editor.
+        displayLabel.setFont(new Font(DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE));
+        editor.setFont(new Font(DEFAULT_FONT_FAMILY, DEFAULT_FONT_SIZE));
+        editor.setVisible(false);
 
-        // Create the label editor (hidden initially)
-        labelEditor = new TextField();
-        labelEditor.setVisible(false);
-        pane.getChildren().add(labelEditor);
+        getChildren().addAll(displayLabel, editor);
+
+        // When the editor loses focus, automatically finalize editing.
+        editor.focusedProperty().addListener((obs, wasFocused, isNowFocused) -> {
+            if (!isNowFocused) {
+                finalizeLabel();
+            }
+        });
+    }
+// Inside EditableLabel class:
+
+    // Add this getter:
+    public TextField getEditor() {
+        return editor;
     }
 
-    public void setPosition(double x, double y) {
-        // Position label and editor with some offset
-        label.setX(x + 10);
-        label.setY(y - 10);
-        labelEditor.setLayoutX(x + 10);
-        labelEditor.setLayoutY(y - 10 - label.getBoundsInLocal().getHeight());
+    /**
+     * Sets both the display label and the editor with the given text.
+     *
+     * @param text the new text
+     */
+    public void setText(String text) {
+        displayLabel.setText(text);
+        editor.setText(text);
     }
 
+    /**
+     * Returns the current text from the display label.
+     *
+     * @return the text currently shown
+     */
+    public String getText() {
+        return editor.getText();
+    }
+
+    /**
+     * Shows the editor and hides the label.
+     * The editor auto-selects its current text.
+     */
+    public void startEditing() {
+        editor.setText(displayLabel.getText());
+        displayLabel.setVisible(false);
+        editor.setVisible(true);
+        Platform.runLater(() -> {
+            editor.requestFocus();
+            editor.selectAll();
+        });
+    }
+
+    /**
+     * Commits any changes from the editor back to the label.
+     */
+    public void stopEditing() {
+        displayLabel.setText(editor.getText());
+    }
+
+    /**
+     * Finalizes editing by stopping the editing mode and toggling visibility.
+     */
     public void finalizeLabel() {
-        if (!pane.getChildren().contains(label)) {
-            pane.getChildren().add(label);
-        }
-    }
-    public void setCenteredPosition(double centerX, double centerY) {
-        // Force CSS and layout pass to ensure the bounds are updated.
-        label.applyCss();
-
-
-        double labelWidth = label.getBoundsInLocal().getWidth();
-        double labelHeight = label.getBoundsInLocal().getHeight();
-
-        // Set so that the horizontal center of the label is at centerX.
-        label.setX(centerX - labelWidth / 2);
-        // Vertical centering can be adjusted since Text's y is the baseline.
-        label.setY(centerY + labelHeight / 4);  // Adjust this value if needed
-        label.setVisible(true);
-        // Also update the label editor position if necessary.
-        labelEditor.applyCss();
-        labelEditor.layout();
-        double editorWidth = labelEditor.getWidth();
-        double editorHeight = labelEditor.getHeight();
-        labelEditor.setLayoutX(centerX - editorWidth / 2);
-        labelEditor.setLayoutY(centerY - editorHeight / 2);
+        stopEditing();
+        editor.setVisible(false);
+        displayLabel.setVisible(true);
     }
 
-
-    public void showEditor() {
-        labelEditor.setText(label.getText());
-        labelEditor.setVisible(true);
-        labelEditor.requestFocus();
-
-        // Sync the text and position
-        labelEditor.textProperty().addListener(labelEditorListener);
+    /**
+     * Sets the position of the display label within this pane.
+     *
+     * @param x the x-coordinate for the label
+     * @param y the y-coordinate for the label
+     */
+    public void setLabelPosition(double x, double y) {
+        displayLabel.setLayoutX(x);
+        displayLabel.setLayoutY(y);
     }
 
-    public void createAndEdit(double x, double y) {
-        setPosition(x, y);     // Set label position
-        finalizeLabel();       // Add label to the pane if not already added
-        showEditor();          // Immediately show the editor for user input
+    /**
+     * Sets the position of the editor within this pane.
+     *
+     * @param x the x-coordinate for the editor
+     * @param y the y-coordinate for the editor
+     */
+    public void setEditorPosition(double x, double y) {
+        editor.setLayoutX(x);
+        editor.setLayoutY(y);
     }
 
-    public void hideEditor() {
-        labelEditor.setVisible(false);
-        labelEditor.textProperty().removeListener(labelEditorListener);
+    /**
+     * Returns the width of the display label.
+     *
+     * @return the width based on the label's layout bounds
+     */
+    public double getLabelWidth() {
+        return displayLabel.getBoundsInLocal().getWidth();
     }
 
-    public Text getLabel() {
-        return label;
-    }
-
-    public TextField getLabelEditor() {
-        return labelEditor;
+    /**
+     * Returns the height of the display label.
+     *
+     * @return the height based on the label's layout bounds
+     */
+    public double getLabelHeight() {
+        return displayLabel.getBoundsInLocal().getHeight();
     }
 }

@@ -1,33 +1,51 @@
 package com.example.dfa_app.DFA;
 
 import javafx.scene.Cursor;
+import javafx.scene.Group;
 import javafx.scene.input.MouseButton;
-import javafx.scene.layout.Pane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Polygon;
 import javafx.scene.shape.QuadCurve;
 
-public class CurvedArrow {
-    private Pane pane;
+/**
+ * CurvedArrow visually represents a transition between DFA states.
+ * It displays a quadratic curve with an arrow head, an adjustable control point,
+ * and an editable label. All visual elements are encapsulated by extending Group,
+ * so the arrow can be added directly to a scene graph.
+ */
+public class CurvedArrow extends Group {
 
-    private QuadCurve curve;
-    private Polygon arrowHead;
-    private Circle controlPoint;
-    private EditableLabel editableLabel;
+    private final QuadCurve curve;
+    private final Polygon arrowHead;
+    private final Circle controlPoint;
+    private final EditableLabel editableLabel;
 
-    private double startX, startY;
+    private final double startX, startY;
     private boolean controlDragging = false;
     private boolean selected = false;
 
-    public CurvedArrow(State state, Pane pane) {
+    /**
+     * Creates a new CurvedArrow starting from the given state's center.
+     * All visual components are created and added to this group.
+     *
+     * @param state the state from which to start the arrow; must not be null.
+     * @throws IllegalArgumentException if state is null.
+     */
+    public CurvedArrow(State state) {
+        if (state == null) {
+            throw new IllegalArgumentException("State cannot be null.");
+        }
+
+        // Capture the starting point based on the state's circle.
         this.startX = state.getCircle().getCenterX();
         this.startY = state.getCircle().getCenterY();
-        this.pane = pane;
 
+        // Initialize and configure the quadratic curve.
         curve = new QuadCurve();
         curve.setStartX(startX);
         curve.setStartY(startY);
+        // Initially set control and end points to the state's center.
         curve.setControlX(startX);
         curve.setControlY(startY);
         curve.setEndX(startX);
@@ -36,31 +54,38 @@ public class CurvedArrow {
         curve.setStrokeWidth(2);
         curve.setFill(null);
         curve.setPickOnBounds(true);
-        pane.getChildren().add(curve);
+        getChildren().add(curve);
 
         // Initialize the arrow head.
         arrowHead = new Polygon();
         arrowHead.setFill(Color.BLACK);
+        getChildren().add(arrowHead);
 
         // Initialize the editable label.
-        editableLabel = new EditableLabel(pane);
-        editableLabel.setPosition(startX+5000, startY+10000);
+        editableLabel = new EditableLabel();
+        // Position the label offscreen initially.
+        editableLabel.setTranslateX(startX + 5000);
+        editableLabel.setTranslateY(startY + 10000);
+        getChildren().add(editableLabel);
 
-        // Initialize the control point.
+        // Initialize the control point for curve adjustment.
         controlPoint = new Circle(5, Color.RED);
         controlPoint.setStroke(Color.BLACK);
         controlPoint.setStrokeWidth(2);
         controlPoint.setVisible(false);
+        getChildren().add(controlPoint);
 
-        // *** Call addEventHandlers so the curve becomes editable ***
+        // Set up mouse event handlers.
         addEventHandlers();
 
-        System.out.println("2");
+        System.out.println("CurvedArrow created.");
     }
 
-
+    /**
+     * Sets up mouse event handlers for curve adjustments and selection.
+     */
     public void addEventHandlers() {
-        // Allow dragging the control point to adjust the curve.
+        // Handle dragging of the control point.
         controlPoint.setOnMousePressed(e -> {
             if (e.getButton() == MouseButton.PRIMARY) {
                 controlDragging = true;
@@ -88,7 +113,7 @@ public class CurvedArrow {
             }
         });
 
-        // Left-click on the curve to deselect if already selected.
+        // Left-click on the curve deselects it if already selected.
         curve.setOnMouseClicked(e -> {
             if (e.getButton() == MouseButton.PRIMARY && selected) {
                 deselect();
@@ -97,15 +122,19 @@ public class CurvedArrow {
     }
 
     /**
-     * Updates the end point of the arrow. Also positions the control point
-     * at the midpoint between start and end so the curve is initially symmetrical.
+     * Updates the end point of the arrow to the center of the provided state.
+     * Also resets the control point to the midpoint between start and end.
+     *
+     * @param state the state that defines the arrow's endpoint.
      */
     public void updateEndPoint(State state) {
-        curve.setEndX(state.getCircle().getCenterX());
-        curve.setEndY(state.getCircle().getCenterY());
+        double endX = state.getCircle().getCenterX();
+        double endY = state.getCircle().getCenterY();
+        curve.setEndX(endX);
+        curve.setEndY(endY);
 
-        double midX = (startX + state.getCircle().getCenterX()) / 2;
-        double midY = (startY + state.getCircle().getCenterY()) / 2;
+        double midX = (startX + endX) / 2;
+        double midY = (startY + endY) / 2;
         curve.setControlX(midX);
         curve.setControlY(midY);
         controlPoint.setCenterX(midX);
@@ -113,11 +142,15 @@ public class CurvedArrow {
 
         updateArrowHead();
         updateLabel();
-        System.out.printf("4");
+        System.out.println("Arrow end point updated.");
     }
 
     /**
-     * Updates the control point, which alters the curvature.
+     * Updates the control point to the specified coordinates,
+     * adjusting the curve's shape accordingly.
+     *
+     * @param x the new X-coordinate for the control point.
+     * @param y the new Y-coordinate for the control point.
      */
     public void updateControlPoint(double x, double y) {
         curve.setControlX(x);
@@ -130,69 +163,52 @@ public class CurvedArrow {
     }
 
     /**
-     * Computes the position and orientation of the arrow head,
-     * then updates the display.
+     * Recalculates the position and orientation of the arrow head based on the curve.
      */
     public void updateArrowHead() {
-        pane.getChildren().remove(arrowHead);
+        // Remove the current arrow head from the group.
+        getChildren().remove(arrowHead);
 
-        // Use parameter t=0.5 to place the arrow head at the midpoint of the curve.
-        double t = 0.5;
-        double x = Math.pow(1 - t, 2) * curve.getStartX()
-                + 2 * (1 - t) * t * curve.getControlX()
-                + Math.pow(t, 2) * curve.getEndX();
-        double y = Math.pow(1 - t, 2) * curve.getStartY()
-                + 2 * (1 - t) * t * curve.getControlY()
-                + Math.pow(t, 2) * curve.getEndY();
+        double t = 0.5; // Use the midpoint on the curve.
+        double[] point = getCurvePoint(t);
+        double[] derivative = getCurveDerivative(t);
 
-        // Calculate derivative to get the angle.
-        double dx = 2 * (1 - t) * (curve.getControlX() - curve.getStartX())
-                + 2 * t * (curve.getEndX() - curve.getControlX());
-        double dy = 2 * (1 - t) * (curve.getControlY() - curve.getStartY())
-                + 2 * t * (curve.getEndY() - curve.getControlY());
-        double angle = Math.atan2(dy, dx);
-
+        double angle = Math.atan2(derivative[1], derivative[0]);
         double arrowLength = 15;
         double arrowWidth = 10;
+
         double sin = Math.sin(angle);
         double cos = Math.cos(angle);
 
-        double x1 = x - arrowLength * cos + arrowWidth * sin;
-        double y1 = y - arrowLength * sin - arrowWidth * cos;
-        double x2 = x - arrowLength * cos - arrowWidth * sin;
-        double y2 = y - arrowLength * sin + arrowWidth * cos;
+        double x1 = point[0] - arrowLength * cos + arrowWidth * sin;
+        double y1 = point[1] - arrowLength * sin - arrowWidth * cos;
+        double x2 = point[0] - arrowLength * cos - arrowWidth * sin;
+        double y2 = point[1] - arrowLength * sin + arrowWidth * cos;
 
-        arrowHead.getPoints().setAll(x, y, x1, y1, x2, y2);
-        pane.getChildren().add(arrowHead);
+        arrowHead.getPoints().setAll(point[0], point[1], x1, y1, x2, y2);
+        getChildren().add(arrowHead);
 
-        // Bring label to the front.
-        editableLabel.getLabel().toFront();
-        editableLabel.getLabelEditor().toFront();
+        // Ensure the editable label is rendered on top.
+        editableLabel.toFront();
     }
 
     /**
-     * Positions the label at the midpoint of the curve.
+     * Positions the editable label near the midpoint of the curve.
      */
     public void updateLabel() {
         double t = 0.5;
-        double x = Math.pow(1 - t, 2) * curve.getStartX()
-                + 2 * (1 - t) * t * curve.getControlX()
-                + Math.pow(t, 2) * curve.getEndX();
-        double y = Math.pow(1 - t, 2) * curve.getStartY()
-                + 2 * (1 - t) * t * curve.getControlY()
-                + Math.pow(t, 2) * curve.getEndY();
+        double[] point = getCurvePoint(t);
 
-        // Offset values: adjust these to move the label the desired distance.
-        // For example, move 20 pixels to the right and 20 pixels upward
+        // Offsets can be adjusted as needed.
         double offsetX = 20;
         double offsetY = -20;
 
-        editableLabel.setCenteredPosition(x + offsetX, y + offsetY);
+        editableLabel.setTranslateX(point[0] + offsetX);
+        editableLabel.setTranslateY(point[1] + offsetY);
     }
 
-
     /**
-     * Called when the arrow is complete. Fixes the arrow head and label.
+     * Finalizes the arrow by updating the arrow head, label, and finalizing the label's display.
      */
     public void finalizeArrow() {
         updateArrowHead();
@@ -201,55 +217,86 @@ public class CurvedArrow {
     }
 
     /**
-     * Marks this arrow as selected, changes its stroke color, shows the control point,
-     * and brings up the label editor.
+     * Marks this arrow as selected: changes stroke color, shows the control point,
+     * brings it to the front, and enters label editing mode.
      */
     public void select() {
         selected = true;
         curve.setStroke(Color.BLUE);
         controlPoint.setVisible(true);
-        if (!pane.getChildren().contains(controlPoint)) {
-            pane.getChildren().add(controlPoint);
+        if (!getChildren().contains(controlPoint)) {
+            getChildren().add(controlPoint);
         }
-        pane.setCursor(Cursor.HAND);
+        setCursor(Cursor.HAND);
+        // Bring components to the front.
         curve.toFront();
         arrowHead.toFront();
         controlPoint.toFront();
-        editableLabel.getLabel().toFront();
-        editableLabel.getLabelEditor().toFront();
-        editableLabel.showEditor();
+        editableLabel.toFront();
+        editableLabel.startEditing();
     }
 
     /**
-     * Deselects the arrow, reverting stroke color and hiding the control point and label editor.
+     * Deselects the arrow, reverting its stroke and hiding the control point and label editor.
      */
     public void deselect() {
         selected = false;
         curve.setStroke(Color.BLACK);
         controlPoint.setVisible(false);
-        pane.getChildren().remove(controlPoint);
-        pane.setCursor(Cursor.DEFAULT);
-        editableLabel.hideEditor();
+        getChildren().remove(controlPoint);
+        setCursor(Cursor.DEFAULT);
+        editableLabel.stopEditing();
     }
 
     /**
      * Returns whether the control point is currently being dragged.
+     *
+     * @return true if the control point is being dragged; false otherwise.
      */
     public boolean isControlDragging() {
         return controlDragging;
     }
 
     /**
-     * Removes the entire arrow (curve, arrow head, control point, and label) from the pane.
+     * Removes all visual elements of the arrow from this group.
+     * After removal, the CurvedArrow should not be used further.
      */
     public void remove() {
-        pane.getChildren().remove(curve);
-        pane.getChildren().remove(arrowHead);
-        pane.getChildren().remove(controlPoint);
-        editableLabel.getLabel().setVisible(false);
-        editableLabel.getLabelEditor().setVisible(false);
+        getChildren().removeAll(curve, arrowHead, controlPoint);
+        editableLabel.setVisible(false);
     }
-    public void setPane(Pane pane){
-        this.pane=pane;
+
+    // ----------------------------------------------------------------------
+    // Private helper methods for curve calculations.
+    // ----------------------------------------------------------------------
+
+    /**
+     * Computes and returns the point [x,y] on the quadratic curve at the given parameter t.
+     *
+     * @param t the parameter (between 0 and 1); for t=0.5 this returns the midpoint.
+     * @return an array with two elements: {x, y}.
+     */
+    private double[] getCurvePoint(double t) {
+        double x = Math.pow(1 - t, 2) * curve.getStartX()
+                + 2 * (1 - t) * t * curve.getControlX()
+                + Math.pow(t, 2) * curve.getEndX();
+        double y = Math.pow(1 - t, 2) * curve.getStartY()
+                + 2 * (1 - t) * t * curve.getControlY()
+                + Math.pow(t, 2) * curve.getEndY();
+        return new double[] { x, y };
+    }
+
+    /**
+     * Computes and returns the derivative [dx,dy] of the quadratic curve at the given parameter t.
+     *
+     * @param t the parameter (between 0 and 1).
+     * @return an array with two elements: {dx, dy}.
+     */
+    private double[] getCurveDerivative(double t) {
+        double dx = 2 * (1 - t) * (curve.getControlX() - curve.getStartX())
+                + 2 * t * (curve.getEndX() - curve.getControlX());
+        double dy = 2 * (1 - t) * (curve.getControlY() - curve.getStartY())
+                + 2 * t * (curve.getEndY() - curve.getControlY());
+        return new double[] { dx, dy };
     }
 }
