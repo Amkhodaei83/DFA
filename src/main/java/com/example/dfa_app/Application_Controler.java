@@ -3,21 +3,14 @@ package com.example.dfa_app;
 import com.example.dfa_app.DFA.*;
 
 import javafx.fxml.FXML;
-import javafx.scene.Camera;
 import javafx.scene.Node;
-import javafx.scene.Scene;
-import javafx.scene.canvas.Canvas;
-import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
-import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
-import javafx.event.ActionEvent;
-import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import jdk.swing.interop.SwingInterOpUtils;
+import org.w3c.dom.ls.LSOutput;
 
 
 public class Application_Controler {
@@ -45,13 +38,7 @@ public class Application_Controler {
     @FXML
     private TableColumn transitionsParentColumn ; //transitionColumn1
     @FXML
-    private AnchorPane centerAnchor ;  // under canvas
-    @FXML
-    private StackPane StackPane ;
-    @FXML
-    private Pane centerCanvas1 ;
-    @FXML
-    private Pane centerCanvas2 ;
+    private Pane pane ;
     @FXML
     private Button startProcessButton ;
     @FXML
@@ -71,6 +58,8 @@ public class Application_Controler {
     @FXML
     private Button redoButton ;
 
+    private boolean waitingForSecondClick = false;
+    private Transition transition;
 
     @FXML
     public void initialize() {
@@ -78,37 +67,38 @@ public class Application_Controler {
 //                transition.getCurvedArrow().select();
 
 
-        centerAnchor.setOnMouseClicked(firstClick -> {
-            Node clickedNode = firstClick.getPickResult().getIntersectedNode();
-            if (firstClick.isControlDown() && clickedNode instanceof Circle) {
-                System.out.println("A Circle was clicked.");
-                // Retrieve the originating state from the clicked node's user data.
-                State fromState = (State) clickedNode.getUserData();
 
-                // Create the transition from the originating state.
-                Transition transition = new Transition(fromState);
-                // If needed, configure the curved arrow (for example, set its pane) here:
-                // transition.getCurvedArrow().setPane(centerCanvas2);
+        pane.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEvent -> {
+            Node clickedNode = mouseEvent.getPickResult().getIntersectedNode();
 
-                // Install a one-time event handler for the second click.
-                centerAnchor.setOnMouseClicked(secondClick -> {
-                    Node secondClickedNode = secondClick.getPickResult().getIntersectedNode();
-                    if (secondClickedNode instanceof Circle) {
-                        System.out.println("A Circle was clicked.");
-                        // Retrieve the target state from the clicked node's user data.
-                        State targetState = (State) secondClickedNode.getUserData();
-                        // Set the target state.
-                        transition.setNextState(targetState);
-                        // Optionally, add event handlers to the curved arrow after linking.
-                        transition.getCurvedArrow().addEventHandlers();
-                    }
+            // If waiting for the second click...
+            if (waitingForSecondClick) {
+                if (clickedNode instanceof Circle) {
+                    System.out.println("Second click on a state");
+                    // Retrieve target state.
+                    State targetState = (State) clickedNode.getUserData();
 
-                    // Remove the temporary second-click handler.
-                    centerAnchor.setOnMouseClicked(null);
-                    secondClick.consume();
-                });
+                    // Complete the transition (instead of calling setToState).
+                    transition.completeTransition(targetState);
+                }
+                waitingForSecondClick = false;
+                // You can keep a reference to the transition if needed.
+                // Setting transition = null will not remove it from the pane.
+                transition = null;
+                mouseEvent.consume();
+                return;
             }
-            firstClick.consume();
+
+            // For the first click: create a new Transition if Ctrl is held.
+            if (mouseEvent.isControlDown() && clickedNode instanceof Circle) {
+                System.out.println("First click on a state");
+                State fromState = (State) clickedNode.getUserData();
+                transition = new Transition(fromState);
+                transition.updateTemporaryEndpoint(mouseEvent.getX(), mouseEvent.getY());
+                waitingForSecondClick = true;
+            }
+
+            mouseEvent.consume();
         });
 
 
@@ -171,7 +161,6 @@ public class Application_Controler {
                     }
                     break;
 
-
             }
         });
     }
@@ -186,11 +175,9 @@ public class Application_Controler {
 
 
     private void createState() {
-        System.out.println("Creating new state");
-
         // Create and add the new state
         State newState = new State(-30, -30, 30, Color.WHITE);
-        centerCanvas2.getChildren().add(newState);
+        pane.getChildren().add(newState);
         newState.select();
 
         // Define a handler for mouse movement (state follows the cursor)
@@ -198,34 +185,35 @@ public class Application_Controler {
             newState.moveState(event.getX(), event.getY());
             event.consume();
         };
-        centerAnchor.setOnMouseMoved(mouseMoveHandler);
+        pane.setOnMouseMoved(mouseMoveHandler);
 
         // Define a handler for the first click that freezes the state's position.
         javafx.event.EventHandler<MouseEvent> firstClickHandler = event -> {
             // Stop following the mouse.
-            centerAnchor.setOnMouseMoved(null);
+            pane.setOnMouseMoved(null);
 
             // Check for overlaps with existing states
             if (isOverlapping(newState)) {
                 showOverlapError();
                 // Re-enable the movement if placement is invalid.
-                centerAnchor.setOnMouseMoved(mouseMoveHandler);
+                pane.setOnMouseMoved(mouseMoveHandler);
                 return;
             }
             // Remove the first-click handler.
-            centerAnchor.setOnMouseClicked(null);
+            pane.setOnMouseClicked(null);
 
             // Set up a final click handler that verifies the state (e.g., finalizes label editing)
-            centerAnchor.setOnMouseClicked(finalClickEvent -> {
+            pane.setOnMouseClicked(finalClickEvent -> {
                 newState.deselect(); // This finalizes the name (with validations)
-                centerAnchor.setOnMouseClicked(null);
+                pane.setOnMouseClicked(null);
                 finalClickEvent.consume();
             });
             event.consume();
         };
 
-        centerAnchor.setOnMouseClicked(firstClickHandler);
-        System.out.println("state :"+newState.getName()+" added to DFA"); //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        pane.setOnMouseClicked(firstClickHandler);
+        System.out.print("************** \t \t \t \t  added to DFA state : "); //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     }
 
     // Helper method to check for state overlap.
@@ -236,7 +224,7 @@ public class Application_Controler {
         double r1 = newState.getMainCircle().getRadius();
 
         // Iterate over all other states in the canvas.
-        for (Node node : centerCanvas2.getChildren()) {
+        for (Node node : pane.getChildren()) {
             if (node instanceof State && node != newState) {
                 State otherState = (State) node;
                 double x2 = otherState.getLayoutX();
@@ -266,12 +254,4 @@ public class Application_Controler {
         alert.setContentText("The state overlaps with an existing state. Please reposition it.");
         alert.showAndWait();
     }
-
-
-
-
-
-
-
-
 }

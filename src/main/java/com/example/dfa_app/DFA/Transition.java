@@ -1,85 +1,510 @@
 package com.example.dfa_app.DFA;
 
+import javafx.animation.FadeTransition;
+import javafx.animation.ScaleTransition;
+import javafx.application.Platform;
+import javafx.beans.InvalidationListener;
+import javafx.scene.Cursor;
 import javafx.scene.Group;
+import javafx.scene.control.Alert;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.MouseButton;
+import javafx.scene.layout.Pane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Polygon;
+import javafx.scene.shape.QuadCurve;
+import javafx.util.Duration;
 
-/**
- * The Transition class represents a transition in the DFA.
- * It holds the originating state, a symbol, and the target state.
- * Visually, it is represented by a CurvedArrow that connects states.
- *
- * By extending Group, Transition encapsulates its visual element, so it
- * can be added directly to any parent container without external dependencies.
- */
+
+// Note: The classes State and EditableLabel must be defined elsewhere.
+// For example, assume State provides getLayoutX(), getLayoutY(), getMainCircle(), etc.
+// And assume EditableLabel provides methods such as:
+//    setText(String), getText(), applyCss(), layout(), getLabelWidth(), getLabelHeight(),
+//    setLabelPosition(double, double), setEditorPosition(double, double),
+//    getEditor(), startEditing(), finalizeLabel(), etc.
+
 public class Transition extends Group {
+
     private final State fromState;
-    private String symbol;
-    private State nextState;
+    private State toState;
     private final CurvedArrow curvedArrow;
+    private final EditableLabel editableLabel;
+    private boolean complete = false;
+
+    // Temporary endpoint used during interactive drawing.
+    private double tempEndX;
+    private double tempEndY;
+
+    // Controls the offset for the curve's control point.
+    private static final double CONTROL_OFFSET = 40.0;
+    private String symbol;
 
     /**
-     * Constructs a new Transition starting from the given state.
-     * The visual component (CurvedArrow) is created internally.
+     * Constructs a Transition originating from the given state.
      *
-     * @param fromState The state from which the transition originates.
+     * @param fromState the originating state (must not be null)
      */
     public Transition(State fromState) {
+        if (fromState == null) {
+            throw new IllegalArgumentException("fromState cannot be null.");
+        }
         this.fromState = fromState;
-        // Create the curved arrow based solely on the starting state.
-        this.curvedArrow = new CurvedArrow(fromState);
-        // Add the curved arrow as a child so it is rendered.
-        getChildren().add(curvedArrow);
-        System.out.println("Transition created: from state " + fromState);
+        this.curvedArrow = new CurvedArrow();
+        this.editableLabel = new EditableLabel();
+        editableLabel.setText("");
+        editableLabel.setVisible(false);
+
+        // Ensure the Transition can receive key events.
+        this.setFocusTraversable(true);
+
+        // Add both the arrow and label to this group.
+        getChildren().addAll(curvedArrow, editableLabel);
+
+        // Add this Transition to the same Pane that contains fromState (if any).
+        if (fromState.getParent() instanceof Pane) {
+            ((Pane) fromState.getParent()).getChildren().add(this);
+        }
+
+        // Listen for movement of the fromState.
+        InvalidationListener layoutListener = obs -> updateTransition();
+        fromState.layoutXProperty().addListener(layoutListener);
+        fromState.layoutYProperty().addListener(layoutListener);
+
+        // When the Transition is focused (after selection), pressing ENTER deselects the arrow.
+        this.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER && curvedArrow.isSelected()) {
+                curvedArrow.deselect();
+                e.consume();
+            }
+        });
+
+        updateTransition();
     }
 
     /**
-     * Overloaded constructor that also accepts the symbol and the target state.
-     *
-     * @param fromState The state from which the transition originates.
-     * @param symbol    The symbol associated with the transition.
-     * @param nextState The target state of the transition.
+     * Updates the geometry of the arrow (start, end, control point) and repositions the label.
+     * The label is positioned so that its center aligns with the arrowhead tip.
      */
-    public Transition(State fromState, String symbol, State nextState) {
-        this(fromState);    // Delegate common initialization.
-        setSymbol(symbol);
-        setNextState(nextState);
+    public void updateTransition() {
+        double fromX = fromState.getLayoutX();
+        double fromY = fromState.getLayoutY();
+        double startX, startY, endX, endY, dx, dy, distance;
+
+        if (complete && toState != null) {
+            double toX = toState.getLayoutX();
+            double toY = toState.getLayoutY();
+            dx = toX - fromX;
+            dy = toY - fromY;
+            distance = Math.hypot(dx, dy);
+            if (distance == 0) {
+                distance = 1;
+            }
+            double fromRadius = fromState.getMainCircle().getRadius();
+            startX = fromX + (dx / distance) * fromRadius;
+            startY = fromY + (dy / distance) * fromState.getMainCircle().getRadius();
+
+            double toRadius = toState.getMainCircle().getRadius();
+            endX = toX - (dx / distance) * toRadius;
+            endY = toY - (dy / distance) * toRadius;
+        } else {
+            dx = tempEndX - fromX;
+            dy = tempEndY - fromY;
+            distance = Math.hypot(dx, dy);
+            if (distance == 0) {
+                distance = 1;
+            }
+            double fromRadius = fromState.getMainCircle().getRadius();
+            startX = fromX + (dx / distance) * fromRadius;
+            startY = fromY + (dy / distance) * fromState.getMainCircle().getRadius();
+            endX = tempEndX;
+            endY = tempEndY;
+        }
+
+        // Compute the control point.
+        double midX = (startX + endX) / 2.0;
+        double midY = (startY + endY) / 2.0;
+        double norm = Math.hypot(dx, dy);
+        double perpX = -dy / norm;
+        double perpY = dx / norm;
+        double controlX = midX + CONTROL_OFFSET * perpX;
+        double controlY = midY + CONTROL_OFFSET * perpY;
+
+        // Update arrow geometry.
+        curvedArrow.setStart(startX, startY);
+        curvedArrow.setEnd(endX, endY);
+        curvedArrow.setControl(controlX, controlY);
+
+        // Reposition the label so that its center aligns with the arrowhead tip.
+        if (complete) {
+            Platform.runLater(() -> {
+                editableLabel.applyCss();
+                editableLabel.layout();
+                double labelWidth = editableLabel.getLabelWidth();
+                double labelHeight = editableLabel.getLabelHeight();
+                double[] tip = curvedArrow.getArrowTip();
+                double labelX = tip[0] - labelWidth / 2.0;
+                double labelY = tip[1] - labelHeight / 2.0;
+                editableLabel.setLabelPosition(labelX, labelY);
+                editableLabel.setEditorPosition(labelX, labelY);
+            });
+        }
     }
 
-    public State getFromState() {
-        return fromState;
+    /**
+     * While drawing interactively, updates the temporary endpoint.
+     *
+     * @param mouseX current mouse X coordinate.
+     * @param mouseY current mouse Y coordinate.
+     */
+    public void updateTemporaryEndpoint(double mouseX, double mouseY) {
+        if (!complete) {
+            tempEndX = mouseX;
+            tempEndY = mouseY;
+            updateTransition();
+        }
+    }
+
+    /**
+     * Completes the transition by setting the destination state.
+     * Also makes the label visible and plays a fade–in animation.
+     *
+     * @param targetState the destination state (must not be null)
+     */
+    public void completeTransition(State targetState) {
+        if (targetState == null) {
+            throw new IllegalArgumentException("Target state cannot be null.");
+        }
+        this.toState = targetState;
+        this.complete = true;
+
+        InvalidationListener toListener = obs -> updateTransition();
+        toState.layoutXProperty().addListener(toListener);
+        toState.layoutYProperty().addListener(toListener);
+
+        editableLabel.setVisible(true);
+
+        // Fade transition for the label.
+        FadeTransition ft = new FadeTransition(Duration.millis(300), editableLabel);
+        ft.setFromValue(0.0);
+        ft.setToValue(1.0);
+        ft.play();
+
+        // Attach the ENTER key handler to attempt finalizing the name.
+        editableLabel.getEditor().setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER) {
+                attemptFinalizeName();
+                e.consume();
+            }
+        });
+        updateTransition();
+    }
+
+    /**
+     * Helper method for finalizing the label name.
+     * It only requires that the name is not empty.
+     * After a successful finalization, a log is printed to indicate a successful transition.
+     */
+    private void attemptFinalizeName() {
+        String proposedName = editableLabel.getText();
+        if (proposedName != null && !proposedName.trim().isEmpty()) {
+            editableLabel.finalizeLabel();
+            setSymbol(proposedName);
+            logSuccessfulTransition(proposedName);
+            System.out.println("Name set to: " + proposedName);
+            // Remove any residual ENTER key handler.
+            editableLabel.getEditor().setOnAction(null);
+        } else {
+            showAlert("Invalid State Name", "State name cannot be empty. Please enter a valid name.");
+            editableLabel.startEditing();
+            editableLabel.getEditor().setOnAction(e -> attemptFinalizeName());
+        }
+    }
+
+    private void setSymbol(String proposedName) {
+        this.symbol = proposedName;
+    }
+
+    /**
+     * Logs a successful transition creation.
+     * Modify this method to integrate with your logging infrastructure, if needed.
+     *
+     * @param symbol the finalized transition name.
+     */
+    private void logSuccessfulTransition(String symbol) {
+        // Here we're simply printing to the console.
+        // You might choose to write to a log file or external logging system.
+        System.out.println("Successful Transition Created: " + symbol);
+    }
+
+    /**
+     * Displays an alert with the specified title and message.
+     *
+     * @param title   the alert title.
+     * @param message the alert message.
+     */
+    private void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    public Object getNextState() {
+        return toState;
     }
 
     public String getSymbol() {
         return symbol;
     }
 
-    public State getNextState() {
-        return nextState;
-    }
-
+    // --------------------------------------------------------------------------
+    // Inner Class: CurvedArrow
+    // --------------------------------------------------------------------------
     /**
-     * Sets the symbol (label) of this transition.
-     *
-     * @param symbol the symbol associated with the transition.
+     * Draws a quadratic curve between two points with an arrowhead at its midpoint.
+     * The right–click event is attached exclusively to the arrowhead.
+     * A pulse animation is played on the arrowhead whenever its position is updated.
+     * Additionally, if the arrowhead is left–clicked while selected or if the ENTER key
+     * is pressed (with the Transition focused), the arrow is deselected.
      */
-    public void setSymbol(String symbol) {
-        this.symbol = symbol;
-    }
+    public class CurvedArrow extends Group {
 
-    /**
-     * Sets the target state of the transition.
-     * Updates the visual representation (curved arrow) to point to the new endpoint.
-     * After setting the target, the curved arrow automatically enters editing mode for its label.
-     *
-     * @param nextState the state where the transition should point.
-     */
-    public void setNextState(State nextState) {
-        this.nextState = nextState;
-        curvedArrow.updateEndPoint(nextState);
-        curvedArrow.select();  // Enter editing mode on the arrow if needed.
-        System.out.println("Transition updated: from state " + fromState + " to " + nextState);
-    }
+        private final QuadCurve curve;
+        private final Polygon arrowHead;
+        private final Circle controlPoint;
 
-    public CurvedArrow getCurvedArrow() {
-        return curvedArrow;
+        private double startX, startY;
+        private double controlX, controlY;
+        private double endX, endY;
+        private double arrowTipX, arrowTipY;
+        private boolean selected = false;
+        private boolean controlDragging = false;
+
+        // Constants for the arrowhead's size.
+        private static final double ARROW_LENGTH = 15.0;
+        private static final double ARROW_WIDTH = 10.0;
+
+        /**
+         * Constructs the curved arrow, initializing the curve, arrowhead, and control point.
+         * Installs the dedicated mouse event handlers.
+         */
+        public CurvedArrow() {
+            curve = new QuadCurve();
+            curve.setStroke(Color.BLACK);
+            curve.setStrokeWidth(2);
+            curve.setFill(Color.TRANSPARENT);
+            curve.setPickOnBounds(true);
+
+            arrowHead = new Polygon();
+            arrowHead.setFill(Color.BLACK);
+
+            controlPoint = new Circle(5, Color.RED);
+            controlPoint.setStroke(Color.BLACK);
+            controlPoint.setStrokeWidth(2);
+            controlPoint.setVisible(false);
+
+            getChildren().addAll(curve, arrowHead, controlPoint);
+            addEventHandlers();
+        }
+
+        /**
+         * Sets the start point of the curve.
+         */
+        public void setStart(double x, double y) {
+            this.startX = x;
+            this.startY = y;
+            curve.setStartX(x);
+            curve.setStartY(y);
+            updateArrowHead();
+        }
+
+        /**
+         * Sets the end point of the curve.
+         */
+        public void setEnd(double x, double y) {
+            this.endX = x;
+            this.endY = y;
+            curve.setEndX(x);
+            curve.setEndY(y);
+            updateArrowHead();
+        }
+
+        /**
+         * Sets the control point of the curve.
+         */
+        public void setControl(double x, double y) {
+            this.controlX = x;
+            this.controlY = y;
+            curve.setControlX(x);
+            curve.setControlY(y);
+            controlPoint.setCenterX(x);
+            controlPoint.setCenterY(y);
+            updateArrowHead();
+        }
+
+        /**
+         * Computes a point on the quadratic curve at parameter t.
+         *
+         * @param t a value between 0 and 1.
+         * @return an array {x, y} representing the point on the curve.
+         */
+        private double[] getCurvePoint(double t) {
+            double oneMinusT = 1 - t;
+            double x = oneMinusT * oneMinusT * startX + 2 * oneMinusT * t * controlX + t * t * endX;
+            double y = oneMinusT * oneMinusT * startY + 2 * oneMinusT * t * controlY + t * t * endY;
+            return new double[]{x, y};
+        }
+
+        /**
+         * Computes the derivative (tangent vector) of the curve at parameter t.
+         *
+         * @param t a value between 0 and 1.
+         * @return an array {dx, dy} representing the tangent.
+         */
+        private double[] getCurveDerivative(double t) {
+            double oneMinusT = 1 - t;
+            double dx = 2 * oneMinusT * (controlX - startX) + 2 * t * (endX - controlX);
+            double dy = 2 * oneMinusT * (controlY - startY) + 2 * t * (endY - controlY);
+            return new double[]{dx, dy};
+        }
+
+        /**
+         * Updates the arrowhead's shape and position based on the curve's midpoint (t = 0.5).
+         * Also plays a pulse animation on the arrowhead if the transition is complete.
+         */
+        public void updateArrowHead() {
+            double t = 0.5;
+            double[] midPoint = getCurvePoint(t);
+            arrowTipX = midPoint[0];
+            arrowTipY = midPoint[1];
+
+            double[] derivative = getCurveDerivative(t);
+            double angle = Math.atan2(derivative[1], derivative[0]);
+
+            double baseX = arrowTipX - ARROW_LENGTH * Math.cos(angle);
+            double baseY = arrowTipY - ARROW_LENGTH * Math.sin(angle);
+            double leftX = baseX + ARROW_WIDTH * Math.sin(angle);
+            double leftY = baseY - ARROW_WIDTH * Math.cos(angle);
+            double rightX = baseX - ARROW_WIDTH * Math.sin(angle);
+            double rightY = baseY + ARROW_WIDTH * Math.cos(angle);
+            arrowHead.getPoints().setAll(arrowTipX, arrowTipY, leftX, leftY, rightX, rightY);
+
+            if (Transition.this.complete) {
+                animateArrowHead();
+            }
+        }
+
+        /**
+         * Returns the current arrowhead tip coordinates.
+         *
+         * @return an array {arrowTipX, arrowTipY}.
+         */
+        public double[] getArrowTip() {
+            return new double[]{arrowTipX, arrowTipY};
+        }
+
+        /**
+         * Installs mouse event handlers exclusively on the arrowhead.
+         * Also allows dragging of the control point with the primary mouse button.
+         */
+        private void addEventHandlers() {
+            // Enable dragging of the control point.
+            controlPoint.setOnMousePressed(e -> {
+                if (e.getButton() == MouseButton.PRIMARY) {
+                    controlDragging = true;
+                    e.consume();
+                }
+            });
+            controlPoint.setOnMouseDragged(e -> {
+                if (controlDragging && e.getButton() == MouseButton.PRIMARY) {
+                    setControl(e.getX(), e.getY());
+                    e.consume();
+                }
+            });
+            controlPoint.setOnMouseReleased(e -> {
+                controlDragging = false;
+                e.consume();
+            });
+
+            // Process right-click events on the arrowhead for selection.
+            // If the arrowhead is left-clicked while selected, then simply deselect.
+            arrowHead.setOnMouseClicked(e -> {
+                if (e.getButton() == MouseButton.SECONDARY) {
+                    toggleSelection();
+                    e.consume();
+                } else if (e.getButton() == MouseButton.PRIMARY && selected) {
+                    deselect();
+                    e.consume();
+                }
+            });
+            arrowHead.setOnMouseEntered(e -> setCursor(Cursor.HAND));
+            arrowHead.setOnMouseExited(e -> setCursor(Cursor.DEFAULT));
+
+            // Ensure the curve itself is not interactive.
+            curve.setOnMouseClicked(null);
+        }
+
+        /**
+         * Plays a pulse animation on the arrowhead via a scale transition.
+         */
+        private void animateArrowHead() {
+            ScaleTransition st = new ScaleTransition(Duration.millis(200), arrowHead);
+            st.setFromX(1.0);
+            st.setFromY(1.0);
+            st.setToX(1.2);
+            st.setToY(1.2);
+            st.setCycleCount(2);
+            st.setAutoReverse(true);
+            st.play();
+        }
+
+        /**
+         * Toggles selection of the arrow.
+         * When first selected, editing starts and focus is requested;
+         * on a subsequent right-click, attemptFinalizeName() is called and,
+         * if editing ends successfully, the arrow is deselected.
+         */
+        private void toggleSelection() {
+            if (!selected) {
+                select();
+                Transition.this.requestFocus(); // Ensure key events (like ENTER for deselection) are captured.
+                Transition.this.editableLabel.startEditing();
+            } else {
+                Transition.this.attemptFinalizeName();
+                if (!Transition.this.editableLabel.getEditor().isVisible()) {
+                    deselect();
+                }
+            }
+        }
+
+        /**
+         * Marks the arrow as selected, changing its stroke color and revealing the control point.
+         */
+        public void select() {
+            selected = true;
+            curve.setStroke(Color.BLUE);
+            controlPoint.setVisible(true);
+            setCursor(Cursor.HAND);
+            toFront();
+        }
+
+        /**
+         * Deselects the arrow: resets its stroke color, hides the control point, and optionally repositions the label.
+         */
+        public void deselect() {
+            // Optionally reposition the label slightly.
+            Transition.this.editableLabel.setLabelPosition(arrowTipX + 10, arrowTipY - 20);
+            Transition.this.editableLabel.setEditorPosition(arrowTipX + 10, arrowTipY - 20);
+            selected = false;
+            curve.setStroke(Color.BLACK);
+            controlPoint.setVisible(false);
+            setCursor(Cursor.DEFAULT);
+        }
+
+        public boolean isSelected() {
+            return selected;
+        }
     }
 }
