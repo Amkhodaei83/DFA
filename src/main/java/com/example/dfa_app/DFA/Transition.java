@@ -25,7 +25,8 @@ import javafx.util.Duration;
 //    getEditor(), startEditing(), finalizeLabel(), etc.
 
 public class Transition extends Group {
-
+    // In Transition class (outside any method)
+    private static CurvedArrow selectedArrow = null;
     private final State fromState;
     private State toState;
     private final CurvedArrow curvedArrow;
@@ -71,9 +72,16 @@ public class Transition extends Group {
         fromState.layoutXProperty().addListener(layoutListener);
         fromState.layoutYProperty().addListener(layoutListener);
 
+
+
+
+        curvedArrow.select();
+
+
         // When the Transition is focused (after selection), pressing ENTER deselects the arrow.
         this.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ENTER && curvedArrow.isSelected()) {
+                attemptFinalizeName();
                 curvedArrow.deselect();
                 e.consume();
             }
@@ -89,25 +97,60 @@ public class Transition extends Group {
     public void updateTransition() {
         double fromX = fromState.getLayoutX();
         double fromY = fromState.getLayoutY();
-        double startX, startY, endX, endY, dx, dy, distance;
+        double startX, startY, endX, endY, controlX, controlY, dx, dy, distance;
 
         if (complete && toState != null) {
-            double toX = toState.getLayoutX();
-            double toY = toState.getLayoutY();
-            dx = toX - fromX;
-            dy = toY - fromY;
-            distance = Math.hypot(dx, dy);
-            if (distance == 0) {
-                distance = 1;
-            }
-            double fromRadius = fromState.getMainCircle().getRadius();
-            startX = fromX + (dx / distance) * fromRadius;
-            startY = fromY + (dy / distance) * fromState.getMainCircle().getRadius();
+            // Handle cycle (self-loop) transition
+            if (fromState == toState) {
+                // --- Self-loop geometry ---
+                // Use the state's center and radius to define the loop.
+                double radius = fromState.getMainCircle().getRadius();
+                // Choose two distinct points on the circle.
+                // For example, let the arrow leave at the top and re-enter at the right.
+                startX = fromX;
+                startY = fromY - radius;    // Top of the state
+                endX = fromX + radius;
+                endY = fromY;               // Right of the state
 
-            double toRadius = toState.getMainCircle().getRadius();
-            endX = toX - (dx / distance) * toRadius;
-            endY = toY - (dy / distance) * toRadius;
+                // The control point is chosen to create a nice loop.
+                // Here, we take the midpoint and offset it upward by an amount equal to the radius.
+                double midX = (startX + endX) / 2.0;
+                double midY = (startY + endY) / 2.0;
+                controlX = midX;
+                controlY = midY - radius;    // You can adjust this value for a shallower or steeper loop.
+
+            } else {
+                // --- Normal transition between two distinct states ---
+                double toX = toState.getLayoutX();
+                double toY = toState.getLayoutY();
+                dx = toX - fromX;
+                dy = toY - fromY;
+                distance = Math.hypot(dx, dy);
+                if (distance == 0) {
+                    distance = 1;
+                }
+                double fromRadius = fromState.getMainCircle().getRadius();
+                startX = fromX + (dx / distance) * fromRadius;
+                startY = fromY + (dy / distance) * fromState.getMainCircle().getRadius();
+
+                double toRadius = toState.getMainCircle().getRadius();
+                endX = toX - (dx / distance) * toRadius;
+                endY = toY - (dy / distance) * toRadius;
+
+                // Compute the control point using the perpendicular offset.
+                double midX = (startX + endX) / 2.0;
+                double midY = (startY + endY) / 2.0;
+                // Determine unit perpendicular via (–dy, dx).
+                double norm = Math.hypot(dx, dy);
+                double perpX = -dy / norm;
+                double perpY = dx / norm;
+                // Add a little randomness or extra offset so that multiple arrows vary.
+                double extraOffset = (int) (Math.random() * 201) - 100; // random value between -100 and 100
+                controlX = midX + (CONTROL_OFFSET + extraOffset) * perpX;
+                controlY = midY + (CONTROL_OFFSET + extraOffset) * perpY;
+            }
         } else {
+            // --- While drawing interactively ---
             dx = tempEndX - fromX;
             dy = tempEndY - fromY;
             distance = Math.hypot(dx, dy);
@@ -119,23 +162,23 @@ public class Transition extends Group {
             startY = fromY + (dy / distance) * fromState.getMainCircle().getRadius();
             endX = tempEndX;
             endY = tempEndY;
+            double midX = (startX + endX) / 2.0;
+            double midY = (startY + endY) / 2.0;
+            double norm = Math.hypot(dx, dy);
+            double perpX = -dy / norm;
+            double perpY = dx / norm;
+            double extraOffset = (int) (Math.random() * 201) - 100;
+            controlX = midX + (CONTROL_OFFSET + extraOffset) * perpX;
+            controlY = midY + (CONTROL_OFFSET + extraOffset) * perpY;
         }
-
-        // Compute the control point.
-        double midX = (startX + endX) / 2.0;
-        double midY = (startY + endY) / 2.0;
-        double norm = Math.hypot(dx, dy);
-        double perpX = -dy / norm;
-        double perpY = dx / norm;
-        double controlX = midX + CONTROL_OFFSET * perpX;
-        double controlY = midY + CONTROL_OFFSET * perpY;
 
         // Update arrow geometry.
         curvedArrow.setStart(startX, startY);
         curvedArrow.setEnd(endX, endY);
         curvedArrow.setControl(controlX, controlY);
+        editableLabel.startEditing();
 
-        // Reposition the label so that its center aligns with the arrowhead tip.
+        // If the transition is complete, reposition the label to align with the arrow tip.
         if (complete) {
             Platform.runLater(() -> {
                 editableLabel.applyCss();
@@ -150,6 +193,7 @@ public class Transition extends Group {
             });
         }
     }
+
 
     /**
      * While drawing interactively, updates the temporary endpoint.
@@ -192,7 +236,7 @@ public class Transition extends Group {
 
         // Attach the ENTER key handler to attempt finalizing the name.
         editableLabel.getEditor().setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER) {
+            if (e.getCode() == KeyCode.ENTER ) {
                 attemptFinalizeName();
                 e.consume();
             }
@@ -214,6 +258,7 @@ public class Transition extends Group {
             System.out.println("Name set to: " + proposedName);
             // Remove any residual ENTER key handler.
             editableLabel.getEditor().setOnAction(null);
+            curvedArrow.deselect();
         } else {
             showAlert("Invalid State Name", "State name cannot be empty. Please enter a valid name.");
             editableLabel.startEditing();
@@ -307,6 +352,7 @@ public class Transition extends Group {
 
             getChildren().addAll(curve, arrowHead, controlPoint);
             addEventHandlers();
+            curve.setMouseTransparent(true);
         }
 
         /**
@@ -430,6 +476,12 @@ public class Transition extends Group {
 
             // Process right-click events on the arrowhead for selection.
             // If the arrowhead is left-clicked while selected, then simply deselect.
+            arrowHead.setOnKeyPressed( event -> {
+                if (event.getCode() == KeyCode.ENTER && selected) {
+                    deselect();
+                    event.consume();
+                }
+            });
             arrowHead.setOnMouseClicked(e -> {
                 if (e.getButton() == MouseButton.SECONDARY) {
                     toggleSelection();
@@ -451,13 +503,14 @@ public class Transition extends Group {
          */
         private void animateArrowHead() {
             ScaleTransition st = new ScaleTransition(Duration.millis(200), arrowHead);
-            st.setFromX(1.0);
+            st.setFromX(1);
             st.setFromY(1.0);
-            st.setToX(1.2);
-            st.setToY(1.2);
+            st.setToX(1.7);
+            st.setToY(1.7);
             st.setCycleCount(2);
             st.setAutoReverse(true);
             st.play();
+
         }
 
         /**
@@ -466,42 +519,56 @@ public class Transition extends Group {
          * on a subsequent right-click, attemptFinalizeName() is called and,
          * if editing ends successfully, the arrow is deselected.
          */
+        // In your CurvedArrow inner class
+
         private void toggleSelection() {
+            // If another arrow is already selected (and it's not this one), ignore the selection attempt.
+            if (Transition.selectedArrow != null && Transition.selectedArrow != this) {
+                return;
+            }
+
             if (!selected) {
                 select();
-                Transition.this.requestFocus(); // Ensure key events (like ENTER for deselection) are captured.
+                // Request focus and start editing label on this transition.
+                Transition.this.requestFocus();
                 Transition.this.editableLabel.startEditing();
             } else {
-                Transition.this.attemptFinalizeName();
-                if (!Transition.this.editableLabel.getEditor().isVisible()) {
-                    deselect();
-                }
+                // Deselect this arrow.
+                deselect();
             }
         }
 
-        /**
-         * Marks the arrow as selected, changing its stroke color and revealing the control point.
-         */
         public void select() {
+            // Only allow selection if none is currently selected or if it's already this arrow.
+            if (Transition.selectedArrow != null && Transition.selectedArrow != this) {
+                return;  // Another arrow is selected; do not change.
+            }
+            // Set up the editor position and make it visible.
+            Transition.this.editableLabel.setEditorPosition(arrowTipX + 10, arrowTipY - 20);
+            Transition.this.editableLabel.setVisible(true);
             selected = true;
+            Transition.selectedArrow = this;
             curve.setStroke(Color.BLUE);
             controlPoint.setVisible(true);
             setCursor(Cursor.HAND);
             toFront();
         }
 
-        /**
-         * Deselects the arrow: resets its stroke color, hides the control point, and optionally repositions the label.
-         */
         public void deselect() {
-            // Optionally reposition the label slightly.
+            // Reposition the label slightly.
             Transition.this.editableLabel.setLabelPosition(arrowTipX + 10, arrowTipY - 20);
             Transition.this.editableLabel.setEditorPosition(arrowTipX + 10, arrowTipY - 20);
             selected = false;
             curve.setStroke(Color.BLACK);
             controlPoint.setVisible(false);
             setCursor(Cursor.DEFAULT);
+            arrowHead.setMouseTransparent(false);
+            // Clear the global selection if this arrow was selected.
+            if (Transition.selectedArrow == this) {
+                Transition.selectedArrow = null;
+            }
         }
+
 
         public boolean isSelected() {
             return selected;

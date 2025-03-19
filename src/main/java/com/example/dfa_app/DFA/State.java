@@ -7,7 +7,12 @@ import javafx.animation.ScaleTransition;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.scene.Group;
+import javafx.scene.Node;
+import javafx.scene.Scene;
 import javafx.scene.control.Alert;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.util.Duration;
@@ -21,8 +26,10 @@ import java.util.Set;
 
 public class State extends Group {
 
-    private static long idCounter = 0;
+    // Global tracking of currently selected state.
+    private static State selectedState = null;
 
+    private static long idCounter = 0;
     private static final Set<String> stateNames = new HashSet<>();
 
     private final long id;
@@ -34,42 +41,87 @@ public class State extends Group {
     private Circle acceptingIndicator;
     private final EditableLabel editableLabel;
 
-
     public State(double centerX, double centerY, double radius, Color color) {
         this.id = idCounter++;
         setLayoutX(centerX);
         setLayoutY(centerY);
         transitions = new ArrayList<>();
 
-
         mainCircle = new Circle(0, 0, radius);
         mainCircle.setFill(color);
         mainCircle.setStroke(Color.BLACK);
         mainCircle.setUserData(this);
-
 
         editableLabel = new EditableLabel();
         editableLabel.setEditorPosition(radius, -1.5 * radius);
 
         getChildren().addAll(mainCircle, editableLabel);
 
+        // Ensure the entire bounds are pickable.
+        setPickOnBounds(true);
+
+        // --- DRAG AND DROP SUPPORT (only active when state is selected) ---
+        final double[] dragDelta = new double[2];
+        this.setOnMousePressed((MouseEvent e) -> {
+            // Only allow dragging if this state is selected.
+            if (!mainCircle.getStroke().equals(Color.BLUE)) {
+                return;
+            }
+            if (e.getButton() == MouseButton.PRIMARY) {
+                dragDelta[0] = e.getSceneX() - getLayoutX();
+                dragDelta[1] = e.getSceneY() - getLayoutY();
+                requestFocus();
+                e.consume();
+            }
+        });
+        this.setOnMouseDragged((MouseEvent e) -> {
+            // Only allow dragging if this state is selected.
+            if (!mainCircle.getStroke().equals(Color.BLUE)) {
+                return;
+            }
+            if (e.getButton() == MouseButton.PRIMARY) {
+                double newX = e.getSceneX() - dragDelta[0];
+                double newY = e.getSceneY() - dragDelta[1];
+                moveState(newX, newY);
+                e.consume();
+            }
+        });
+        // --- END DRAG SUPPORT ---
+
+        // --- Existing Event Handlers for Selection/Deselection ---
+        setFocusTraversable(true);
+        this.setOnMouseClicked(e -> {
+            // Right-click toggles selection.
+            if (e.getButton() == MouseButton.SECONDARY) {
+                if (mainCircle.getStroke().equals(Color.BLUE)) {
+                    deselect();
+                } else {
+                    select();
+                }
+                e.consume();
+            }
+        });
+        this.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ENTER && mainCircle.getStroke().equals(Color.BLUE)) {
+                deselect();
+                e.consume();
+            }
+        });
+        // --- End Existing Handlers ---
 
         this.accepting = false;
         this.name = "";
         editableLabel.setMouseTransparent(true);
     }
 
-
     public State(double centerX, double centerY, double radius, Color color, String name) {
         this(centerX, centerY, radius, color);
         setName(name);
     }
 
-
     public String getName() {
         return name;
     }
-
 
     public void setName(String newName) {
         if (newName == null || newName.trim().isEmpty()) {
@@ -86,7 +138,6 @@ public class State extends Group {
             Platform.runLater(editableLabel::startEditing);
             return;
         }
-        // Remove previous name from tracking if one exists.
         if (this.name != null && !this.name.trim().isEmpty()) {
             stateNames.remove(this.name);
         }
@@ -95,19 +146,14 @@ public class State extends Group {
         setLabelText(newName);
     }
 
-
     public boolean isAccepting() {
         return accepting;
     }
-
 
     public void setAccepting(boolean accepting) {
         this.accepting = accepting;
         updateAcceptingIndicator();
     }
-
-
-
 
     public void removeTransition(Transition transition) {
         if (transition != null) {
@@ -115,16 +161,13 @@ public class State extends Group {
         }
     }
 
-
     public void removeTransition(String symbol, State nextState) {
         transitions.removeIf(t -> t.getSymbol().equals(symbol) && Objects.equals(t.getNextState(), nextState));
     }
 
-
     public List<Transition> getTransitions() {
         return Collections.unmodifiableList(transitions);
     }
-
 
     public List<Transition> getTransitions(String symbol) {
         List<Transition> matching = new ArrayList<>();
@@ -136,12 +179,10 @@ public class State extends Group {
         return matching;
     }
 
-
     public void moveState(double newX, double newY) {
         setLayoutX(newX);
         setLayoutY(newY);
     }
-
 
     public void animateMoveState(double newX, double newY, double durationMillis) {
         Timeline timeline = new Timeline();
@@ -152,8 +193,15 @@ public class State extends Group {
         timeline.play();
     }
 
-
+    /**
+     * When a state is selected, its stroke changes to blue, it scales up, and any other selected state is deselected.
+     */
     public void select() {
+        // If another state is currently selected, deselect it.
+        if (selectedState != null && selectedState != this) {
+            selectedState.deselect();
+        }
+        selectedState = this;
         mainCircle.setStroke(Color.BLUE);
         ScaleTransition scaleUp = new ScaleTransition(Duration.millis(200), this);
         scaleUp.setToX(1.1);
@@ -162,31 +210,30 @@ public class State extends Group {
         editableLabel.startEditing();
     }
 
-
+    /**
+     * Deselects this state. Once deselected, this state can no longer be dragged.
+     */
     public void deselect() {
         mainCircle.setStroke(Color.BLACK);
         ScaleTransition scaleDown = new ScaleTransition(Duration.millis(200), this);
         scaleDown.setToX(1.0);
         scaleDown.setToY(1.0);
         scaleDown.play();
-
         attemptFinalizeName();
+        if (selectedState == this) {
+            selectedState = null;
+        }
     }
 
-
     public void deleteState() {
-
         if (this.name != null && !this.name.trim().isEmpty()) {
             stateNames.remove(this.name);
         }
-
         transitions.clear();
-
         if (this.getParent() instanceof Group) {
             ((Group) this.getParent()).getChildren().remove(this);
         }
     }
-
 
     public void setLabelText(String text) {
         editableLabel.setText(text);
@@ -195,21 +242,22 @@ public class State extends Group {
             editableLabel.layout();
             double labelWidth = editableLabel.getLabelWidth();
             double labelHeight = editableLabel.getLabelHeight();
-
-
             editableLabel.setLabelPosition(-labelWidth / 2, -labelHeight / 2);
         });
     }
 
-
     private void attemptFinalizeName() {
         String proposedName = editableLabel.getText();
+        if (proposedName.equals(this.name)) {
+            editableLabel.finalizeLabel();
+            editableLabel.getEditor().setOnAction(null);
+            return;
+        }
         if (isValidName(proposedName)) {
             commitName(proposedName);
             editableLabel.finalizeLabel();
             setLabelText(proposedName);
             System.out.println(this.name);
-            // Remove the ENTER key handler.
             editableLabel.getEditor().setOnAction(null);
         } else {
             if (proposedName == null || proposedName.trim().isEmpty()) {
@@ -218,19 +266,16 @@ public class State extends Group {
                 showAlert("Duplicate State Name", "A state with the name '" + proposedName
                         + "' already exists. Please choose a unique name.");
             }
-            // Re-enable editing if the name is invalid.
             editableLabel.startEditing();
             editableLabel.getEditor().setOnAction(e -> attemptFinalizeName());
         }
     }
-
 
     private boolean isValidName(String candidate) {
         return candidate != null
                 && !candidate.trim().isEmpty()
                 && !stateNames.contains(candidate);
     }
-
 
     private void commitName(String validName) {
         if (this.name != null && !this.name.trim().isEmpty()) {
@@ -240,7 +285,6 @@ public class State extends Group {
         stateNames.add(validName);
     }
 
-
     private void updateAcceptingIndicator() {
         if (accepting) {
             if (acceptingIndicator == null) {
@@ -248,7 +292,7 @@ public class State extends Group {
                 acceptingIndicator.setFill(Color.TRANSPARENT);
                 acceptingIndicator.setStroke(Color.GREEN);
                 acceptingIndicator.getStrokeDashArray().addAll(4.0, 4.0);
-                // Add indicator below the main circle.
+                // Place the indicator behind the main circle.
                 getChildren().add(0, acceptingIndicator);
             }
         } else if (acceptingIndicator != null) {
@@ -256,7 +300,6 @@ public class State extends Group {
             acceptingIndicator = null;
         }
     }
-
 
     private void showAlert(String title, String content) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -266,12 +309,10 @@ public class State extends Group {
         alert.showAndWait();
     }
 
-
     @Override
     public String toString() {
         return name;
     }
-
 
     @Override
     public boolean equals(Object o) {
@@ -283,17 +324,14 @@ public class State extends Group {
         return this.id == other.id;
     }
 
-
     @Override
     public int hashCode() {
         return Objects.hash(id);
     }
 
-
     public Circle getMainCircle() {
         return mainCircle;
     }
-
 
     public Circle getCircle() {
         return mainCircle;
