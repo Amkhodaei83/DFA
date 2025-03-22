@@ -336,4 +336,17 @@ public class State extends Group {
     public Circle getCircle() {
         return mainCircle;
     }
+
+    public Transition getTransition(String symbol) {
+        List<Transition> list = getTransitions(symbol);
+        return list.isEmpty() ? null : list.get(0);
+    }
+    public void addTransitionDirect(String symbol, State newTarget) {
+        // Use a static helper from Transition to build a new transition.
+        Transition t = Transition.createTransition(this, symbol, newTarget);
+        // Add the transition to this state's list.
+        transitions.add(t);
+    }
+
+
 }

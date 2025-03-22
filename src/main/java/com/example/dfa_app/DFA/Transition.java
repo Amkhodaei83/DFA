@@ -209,6 +209,23 @@ public class Transition extends Group {
         }
     }
 
+    public static Transition createTransition(State from, String symbol, State to) {
+        // Create a new transition originating from 'from'.
+        Transition t = new Transition(from);
+        // Complete the transition by setting the destination state.
+        t.completeTransition(to);
+        // Set the symbol in a non-interactive way.
+        t.forceSetSymbol(symbol);
+        return t;
+    }
+    public void forceSetSymbol(String symbol) {
+        this.symbol = symbol;
+        // Update the label text accordingly.
+        editableLabel.setText(symbol);
+        // Optionally, immediately finalize the label so it doesn’t remain in editable mode.
+        editableLabel.finalizeLabel();
+    }
+
     /**
      * Completes the transition by setting the destination state.
      * Also makes the label visible and plays a fade–in animation.
@@ -296,7 +313,7 @@ public class Transition extends Group {
         alert.showAndWait();
     }
 
-    public Object getNextState() {
+    public State getNextState() {
         return toState;
     }
 
