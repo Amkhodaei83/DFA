@@ -1,5 +1,6 @@
 package com.example.dfa_app.DFA;
 
+import com.example.dfa_app.SelectionListener;
 import javafx.animation.Interpolator;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
@@ -7,12 +8,8 @@ import javafx.animation.ScaleTransition;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.scene.Group;
-import javafx.scene.Node;
-import javafx.scene.Scene;
 import javafx.scene.control.Alert;
-import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
-import javafx.scene.input.MouseEvent;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.util.Duration;
@@ -23,29 +20,41 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-public class State extends Group {
+/**
+ * State represents a node in a DFA.
+ * It is selectable and editable via an in-place EditableLabel.
+ * The state prevents deselection until a valid (non-empty and unique) name is entered.
+ */
+public class State extends Group implements simularity {
 
-    // Global tracking of currently selected state.
+    // --- Static Fields ---
     private static State selectedState = null;
-
     private static long idCounter = 0;
     private static final Set<String> stateNames = new HashSet<>();
 
+    // --- Instance Fields ---
     private final long id;
     private String name;
     private boolean accepting;
-    private final List<Transition> transitions;
-
+    private final List<Transition> transitions = new ArrayList<>();
     private final Circle mainCircle;
     private Circle acceptingIndicator;
     private final EditableLabel editableLabel;
+private final boolean selected = false;
+    // Drag and event related fields.
+    private double dragDeltaX;
+    private double dragDeltaY;
+    private double offsetX;
+    private double offsetY;
+    private SelectionListener selectionListener;
 
+    // --- Constructors ---
     public State(double centerX, double centerY, double radius, Color color) {
         this.id = idCounter++;
         setLayoutX(centerX);
         setLayoutY(centerY);
-        transitions = new ArrayList<>();
 
         mainCircle = new Circle(0, 0, radius);
         mainCircle.setFill(color);
@@ -54,64 +63,16 @@ public class State extends Group {
 
         editableLabel = new EditableLabel();
         editableLabel.setEditorPosition(radius, -1.5 * radius);
+        editableLabel.setMouseTransparent(true);
 
+        // Add visual components to the Group.
         getChildren().addAll(mainCircle, editableLabel);
-
-        // Ensure the entire bounds are pickable.
         setPickOnBounds(true);
-
-        // --- DRAG AND DROP SUPPORT (only active when state is selected) ---
-        final double[] dragDelta = new double[2];
-        this.setOnMousePressed((MouseEvent e) -> {
-            // Only allow dragging if this state is selected.
-            if (!mainCircle.getStroke().equals(Color.BLUE)) {
-                return;
-            }
-            if (e.getButton() == MouseButton.PRIMARY) {
-                dragDelta[0] = e.getSceneX() - getLayoutX();
-                dragDelta[1] = e.getSceneY() - getLayoutY();
-                requestFocus();
-                e.consume();
-            }
-        });
-        this.setOnMouseDragged((MouseEvent e) -> {
-            // Only allow dragging if this state is selected.
-            if (!mainCircle.getStroke().equals(Color.BLUE)) {
-                return;
-            }
-            if (e.getButton() == MouseButton.PRIMARY) {
-                double newX = e.getSceneX() - dragDelta[0];
-                double newY = e.getSceneY() - dragDelta[1];
-                moveState(newX, newY);
-                e.consume();
-            }
-        });
-        // --- END DRAG SUPPORT ---
-
-        // --- Existing Event Handlers for Selection/Deselection ---
         setFocusTraversable(true);
-        this.setOnMouseClicked(e -> {
-            // Right-click toggles selection.
-            if (e.getButton() == MouseButton.SECONDARY) {
-                if (mainCircle.getStroke().equals(Color.BLUE)) {
-                    deselect();
-                } else {
-                    select();
-                }
-                e.consume();
-            }
-        });
-        this.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ENTER && mainCircle.getStroke().equals(Color.BLUE)) {
-                deselect();
-                e.consume();
-            }
-        });
-        // --- End Existing Handlers ---
 
         this.accepting = false;
+        // Start with an empty name.
         this.name = "";
-        editableLabel.setMouseTransparent(true);
     }
 
     public State(double centerX, double centerY, double radius, Color color, String name) {
@@ -119,12 +80,22 @@ public class State extends Group {
         setName(name);
     }
 
+    // --- Selection Listener ---
+    public void setSelectionListener(SelectionListener listener) {
+        this.selectionListener = listener;
+    }
+
+    // --- Name Getters and Setters ---
     public String getName() {
         return name;
     }
 
+    /**
+     * Sets a new name if valid. If the proposed name is invalid (empty or not unique),
+     * an alert is shown and editing is restarted.
+     */
     public void setName(String newName) {
-        if (newName == null || newName.trim().isEmpty()) {
+        if (isNullOrEmpty(newName)) {
             showAlert("Invalid State Name", "State name cannot be empty. Please choose a unique name.");
             Platform.runLater(editableLabel::startEditing);
             return;
@@ -133,12 +104,12 @@ public class State extends Group {
             return;
         }
         if (stateNames.contains(newName)) {
-            showAlert("Duplicate State Name", "A state with the name '" + newName
-                    + "' already exists. Please choose a unique name.");
+            showAlert("Duplicate State Name", "A state with the name '" + newName + "' already exists. Please choose a unique name.");
             Platform.runLater(editableLabel::startEditing);
             return;
         }
-        if (this.name != null && !this.name.trim().isEmpty()) {
+        // Remove old name and update.
+        if (!isNullOrEmpty(this.name)) {
             stateNames.remove(this.name);
         }
         this.name = newName;
@@ -146,6 +117,7 @@ public class State extends Group {
         setLabelText(newName);
     }
 
+    // --- Accepting State Methods ---
     public boolean isAccepting() {
         return accepting;
     }
@@ -155,6 +127,7 @@ public class State extends Group {
         updateAcceptingIndicator();
     }
 
+    // --- Transition Management ---
     public void removeTransition(Transition transition) {
         if (transition != null) {
             transitions.remove(transition);
@@ -170,15 +143,18 @@ public class State extends Group {
     }
 
     public List<Transition> getTransitions(String symbol) {
-        List<Transition> matching = new ArrayList<>();
-        for (Transition t : transitions) {
-            if (t.getSymbol().equals(symbol)) {
-                matching.add(t);
-            }
-        }
-        return matching;
+        return transitions.stream()
+                .filter(t -> t.getSymbol().equals(symbol))
+                .collect(Collectors.toList());
     }
 
+    public Transition getTransition(String symbol) {
+        return transitions.stream()
+                .filter(t -> t.getSymbol().equals(symbol))
+                .findFirst().orElse(null);
+    }
+
+    // --- Movement Methods ---
     public void moveState(double newX, double newY) {
         setLayoutX(newX);
         setLayoutY(newY);
@@ -193,11 +169,8 @@ public class State extends Group {
         timeline.play();
     }
 
-    /**
-     * When a state is selected, its stroke changes to blue, it scales up, and any other selected state is deselected.
-     */
+    // --- Selection Methods ---
     public void select() {
-        // If another state is currently selected, deselect it.
         if (selectedState != null && selectedState != this) {
             selectedState.deselect();
         }
@@ -207,35 +180,144 @@ public class State extends Group {
         scaleUp.setToX(1.1);
         scaleUp.setToY(1.1);
         scaleUp.play();
+
         editableLabel.startEditing();
+        if (selectionListener != null) {
+            selectionListener.onSelected(this);
+        }
+
+        offsetX = mainCircle.getRadius();
+        offsetY = mainCircle.getRadius();
+
+        // Configure dragging.
+        this.setOnMousePressed(e -> {
+            if (e.getButton() == MouseButton.PRIMARY) {
+                dragDeltaX = e.getSceneX() - getLayoutX();
+                dragDeltaY = e.getSceneY() - getLayoutY();
+                requestFocus();
+                e.consume();
+            }
+        });
+        this.setOnMouseDragged(e -> {
+            if (e.getButton() == MouseButton.PRIMARY) {
+                double newX = e.getSceneX() - dragDeltaX;
+                double newY = e.getSceneY() - dragDeltaY;
+                moveState(newX, newY);
+                e.consume();
+            }
+        });
     }
 
     /**
-     * Deselects this state. Once deselected, this state can no longer be dragged.
+     * The deselection method will validate the current name (from the editable label).
+     * If the name is invalid (empty, null, or duplicate) it shows an alert and keeps the state selected.
      */
     public void deselect() {
+        if (!finalizeName()) {
+            keepInSelectionMode();
+            return;
+        }
+        commitDeselection();
+    }
+
+    // --- Name Finalization Helpers ---
+    /**
+     * Validates and commits the text from the editable label.
+     * @return true if the name is valid and finalized, false otherwise.
+     */
+    private boolean finalizeName() {
+        String proposedName = editableLabel.getText();
+        if (isInvalidName(proposedName)) {
+            showInvalidNameAlert(proposedName);
+            return false;
+        }
+        updateName(proposedName);
+        editableLabel.finalizeLabel();
+        editableLabel.getEditor().setOnAction(null);
+        return true;
+    }
+
+    /**
+     * Checks if the name candidate is invalid.
+     * A candidate is considered invalid if it is null, empty, or (if changed) already exists.
+     */
+    private boolean isInvalidName(String candidate) {
+        if (isNullOrEmpty(candidate)) {
+            return true;
+        }
+        // If the candidate is different from the current name, it must not already exist.
+        if (!candidate.equals(this.name) && stateNames.contains(candidate)) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Displays an alert corresponding to the detected name error.
+     */
+    private void showInvalidNameAlert(String candidate) {
+        if (isNullOrEmpty(candidate)) {
+            showAlert("Invalid State Name", "State name cannot be empty. Please enter a valid name.");
+        } else if (!candidate.equals(this.name) && stateNames.contains(candidate)) {
+            showAlert("Duplicate State Name", "A state with the name '" + candidate + "' already exists. Please choose a unique name.");
+        }
+    }
+
+    /**
+     * Updates the internal name and corresponding UI elements.
+     */
+    private void updateName(String newName) {
+        if (!newName.equals(this.name)) {
+            if (!isNullOrEmpty(this.name)) {
+                stateNames.remove(this.name);
+            }
+            this.name = newName;
+            stateNames.add(newName);
+            setLabelText(newName);
+        }
+    }
+
+    /**
+     * Keeps the state in selection mode by restarting editing and maintaining the visual style.
+     */
+    private void keepInSelectionMode() {
+        Platform.runLater(editableLabel::startEditing);
+        mainCircle.setStroke(Color.BLUE);
+    }
+
+    /**
+     * Completes the deselection process, updating visual cues and clearing interaction handlers.
+     */
+    private void commitDeselection() {
         mainCircle.setStroke(Color.BLACK);
         ScaleTransition scaleDown = new ScaleTransition(Duration.millis(200), this);
         scaleDown.setToX(1.0);
         scaleDown.setToY(1.0);
         scaleDown.play();
-        attemptFinalizeName();
+
         if (selectedState == this) {
             selectedState = null;
         }
+        if (selectionListener != null) {
+            selectionListener.onDeselected(this);
+        }
+        this.setOnMousePressed(null);
+        this.setOnMouseDragged(null);
     }
 
+    // --- Deletion ---
     public void deleteState() {
-        if (this.name != null && !this.name.trim().isEmpty()) {
-            stateNames.remove(this.name);
+        if (!isNullOrEmpty(name)) {
+            stateNames.remove(name);
         }
         transitions.clear();
-        if (this.getParent() instanceof Group) {
-            ((Group) this.getParent()).getChildren().remove(this);
+        if (getParent() instanceof Group) {
+            ((Group)getParent()).getChildren().remove(this);
         }
     }
 
-    public void setLabelText(String text) {
+    // --- Label Management ---
+    private void setLabelText(String text) {
         editableLabel.setText(text);
         Platform.runLater(() -> {
             editableLabel.applyCss();
@@ -246,45 +328,7 @@ public class State extends Group {
         });
     }
 
-    private void attemptFinalizeName() {
-        String proposedName = editableLabel.getText();
-        if (proposedName.equals(this.name)) {
-            editableLabel.finalizeLabel();
-            editableLabel.getEditor().setOnAction(null);
-            return;
-        }
-        if (isValidName(proposedName)) {
-            commitName(proposedName);
-            editableLabel.finalizeLabel();
-            setLabelText(proposedName);
-            System.out.println(this.name);
-            editableLabel.getEditor().setOnAction(null);
-        } else {
-            if (proposedName == null || proposedName.trim().isEmpty()) {
-                showAlert("Invalid State Name", "State name cannot be empty. Please enter a valid name.");
-            } else if (stateNames.contains(proposedName)) {
-                showAlert("Duplicate State Name", "A state with the name '" + proposedName
-                        + "' already exists. Please choose a unique name.");
-            }
-            editableLabel.startEditing();
-            editableLabel.getEditor().setOnAction(e -> attemptFinalizeName());
-        }
-    }
-
-    private boolean isValidName(String candidate) {
-        return candidate != null
-                && !candidate.trim().isEmpty()
-                && !stateNames.contains(candidate);
-    }
-
-    private void commitName(String validName) {
-        if (this.name != null && !this.name.trim().isEmpty()) {
-            stateNames.remove(this.name);
-        }
-        this.name = validName;
-        stateNames.add(validName);
-    }
-
+    // --- Accepting Indicator ---
     private void updateAcceptingIndicator() {
         if (accepting) {
             if (acceptingIndicator == null) {
@@ -301,6 +345,11 @@ public class State extends Group {
         }
     }
 
+    // --- Utility Methods ---
+    private boolean isNullOrEmpty(String str) {
+        return str == null || str.trim().isEmpty();
+    }
+
     private void showAlert(String title, String content) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
         alert.setTitle(title);
@@ -309,17 +358,11 @@ public class State extends Group {
         alert.showAndWait();
     }
 
-    @Override
-    public String toString() {
-        return name;
-    }
-
+    // --- Equality Overrides ---
     @Override
     public boolean equals(Object o) {
-        if (this == o)
-            return true;
-        if (!(o instanceof State))
-            return false;
+        if (this == o) return true;
+        if (!(o instanceof State)) return false;
         State other = (State) o;
         return this.id == other.id;
     }
@@ -329,6 +372,7 @@ public class State extends Group {
         return Objects.hash(id);
     }
 
+    // --- Additional Getters and Methods ---
     public Circle getMainCircle() {
         return mainCircle;
     }
@@ -337,16 +381,16 @@ public class State extends Group {
         return mainCircle;
     }
 
-    public Transition getTransition(String symbol) {
-        List<Transition> list = getTransitions(symbol);
-        return list.isEmpty() ? null : list.get(0);
-    }
-    public void addTransitionDirect(String symbol, State newTarget) {
-        // Use a static helper from Transition to build a new transition.
-        Transition t = Transition.createTransition(this, symbol, newTarget);
-        // Add the transition to this state's list.
-        transitions.add(t);
+    public void addTransitionDirect(String symbol, State nextState) {
+        // Implementation for adding a direct transition can be added here.
     }
 
+    // In some cases you might need this alternative getter.
+    public String getname() {
+        return name;
+    }
 
+    public boolean isSelected() {
+        return selected  ;
+    }
 }

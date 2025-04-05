@@ -6,6 +6,8 @@ import javafx.animation.Timeline;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.*;
+import javafx.scene.input.MouseButton;
+import javafx.scene.input.MouseDragEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
@@ -21,8 +23,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class Application_Controler {
-
+public class Application_Controler  implements SelectionListener  {
+    @FXML
+    private TabPane TabPane;
+    @FXML
+    private Tab transitionSettingsTab , stateSettingsTab;
     @FXML
     private BorderPane BorderPane;
     @FXML
@@ -58,12 +63,13 @@ public class Application_Controler {
     @FXML
     private Button redoButton;
 
-    private boolean waitingForSecondClick = false;
-    private Transition transition;
+
+
 
     // Hold a reference to the DFA instance.
     private DFA dfa;
-
+    private Transition currentTransition;
+    private boolean waitingForSecondClick = false;
 
     @FXML
     public void initialize() {
@@ -81,33 +87,87 @@ public class Application_Controler {
         // Global mouse click handler for creating transitions.
         pane.addEventHandler(MouseEvent.MOUSE_CLICKED, mouseEvent -> {
             Node clickedNode = mouseEvent.getPickResult().getIntersectedNode();
+            // If the clicked node is a state (Circle), handle state selection/deselection.
+            if (clickedNode.getUserData() instanceof State) {
+                State state = (State) clickedNode.getUserData();
 
-            // In transition creation mode, waiting for the second click.
+                // Right-click or secondary button toggles selection.
+                if (mouseEvent.getButton() == MouseButton.SECONDARY) {
+                    if (state.isSelected()) {
+                        state.deselect();
+                    } else {
+                        state.select();
+                    }
+                    mouseEvent.consume();
+                    return;
+                }
+                // Left-click (primary button) on an already selected state deselects it.
+                else if (mouseEvent.getButton() == MouseButton.PRIMARY) {
+                    if (state.isSelected()) {
+                        state.deselect();
+                        mouseEvent.consume();
+                        return;
+                    }
+                }
+            }
+
+
+
+//            if (clickedNode.getUserData() instanceof State) {
+//                Transition transition = (Transition) clickedNode.getUserData();
+//
+//                // Right-click or secondary button toggles selection.
+//                if (mouseEvent.getButton() == MouseButton.SECONDARY) {
+//                    if (state.isSelected()) {
+//                        state.deselect();
+//                    } else {
+//                        state.select();
+//                    }
+//                    mouseEvent.consume();
+//                    return;
+//                }
+//                // Left-click (primary button) on an already selected state deselects it.
+//                else if (mouseEvent.getButton() == MouseButton.PRIMARY) {
+//                    if (state.isSelected()) {
+//                        state.deselect();
+//                        mouseEvent.consume();
+//                        return;
+//                    }
+//                }
+//            }
+
+            // If a transition is already in creation mode, then this is the second click.
             if (waitingForSecondClick) {
                 if (clickedNode instanceof Circle) {
-                    System.out.println("Second click on a state");
-                    // Retrieve the target state via the circle's userData.
                     State targetState = (State) clickedNode.getUserData();
-                    if (transition != null) {
-                        transition.completeTransition(targetState);
+                    if (currentTransition != null) {
+                        System.out.println("Second click on a state. Completing transition...");
+                        currentTransition.completeTransition(targetState);
+                        // Optionally, set a selection listener if you need additional logic.
+                        currentTransition.setSelectionListener(this);
                     }
                 }
                 waitingForSecondClick = false;
-                transition = null;
+                currentTransition = null;
                 mouseEvent.consume();
                 return;
             }
 
-            // For the first click: if Ctrl is held and a state is clicked, create a new Transition.
+            // For the first click: if Ctrl is held and a state (Circle) is clicked, create a Transition.
             if (mouseEvent.isControlDown() && clickedNode instanceof Circle) {
-                System.out.println("First click on a state");
+                System.out.println("CTRL + click on a state. Initiating transition creation...");
                 State fromState = (State) clickedNode.getUserData();
-                transition = new Transition(fromState);
-                transition.updateTemporaryEndpoint(mouseEvent.getX(), mouseEvent.getY());
+                currentTransition = new Transition(fromState);
+                // Attach this controller as the selection listener if needed.
+                currentTransition.setSelectionListener(this);
                 waitingForSecondClick = true;
+                mouseEvent.consume();
+                return;
             }
             mouseEvent.consume();
         });
+
+
 
         // When process button is clicked, first build the DFA from current UI elements.
         startProcessButton.setOnAction(actionEvent -> {
@@ -218,6 +278,7 @@ public class Application_Controler {
     private void createState() {
         // Create a new state using the four-parameter constructor (name to be finalized later).
         State newState = new State(-30, -30, 30, Color.WHITE);
+        newState.setSelectionListener(this);
         pane.getChildren().add(newState);
         newState.select();
 
@@ -284,5 +345,29 @@ public class Application_Controler {
         alert.setHeaderText(null);
         alert.setContentText("The state overlaps with an existing state. Please reposition it.");
         alert.showAndWait();
+    }
+
+    public void onSelected(Object obj) {
+        if (obj instanceof State) {
+            // Update state-related UI components here if needed.
+            // Then switch to the State Settings tab.
+            TabPane.getSelectionModel().select(stateSettingsTab);
+        } else if (obj instanceof CurvedArrow) {
+
+            // Update transition-related UI components here if needed.
+            // Then switch to the Transition Settings tab.
+            TabPane.getSelectionModel().select(transitionSettingsTab);
+        }
+    }
+
+    @Override
+    public void onDeselected(Object obj) {
+        if (obj instanceof State) {
+//            ((State) obj).setName(stateNameTextField.getText());
+        }
+        else if (obj instanceof CurvedArrow) {
+
+        }
+
     }
 }
